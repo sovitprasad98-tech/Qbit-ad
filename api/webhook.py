@@ -5,7 +5,7 @@ BOT_TOKEN  = os.environ.get("BOT_TOKEN",  "8729878269:AAEXcfd0fHweIpJBWVYwLr6tky
 FB_URL     = os.environ.get("FIREBASE_URL","https://cyber-attack-c5414-default-rtdb.firebaseio.com")
 WEBAPP_URL = os.environ.get("WEBAPP_URL",  "https://your-project.vercel.app")
 OFFICIAL   = "qbit_ad"
-RATE       = 5   # ₹5 per 100 views
+RATE       = 0.05  # ₹0.05 per view (= ₹5 per 100 views, but credited continuously)
 
 
 def tg(method, **kw):
@@ -65,7 +65,7 @@ class handler(BaseHTTPRequestHandler):
                "1️⃣ Open the app and add your channel\n"
                "2️⃣ Make @Qbit_Ad_Bot an admin\n"
                "3️⃣ Sponsored posts arrive automatically\n"
-               "4️⃣ <b>Earn ₹5 per every 100 views — in real time!</b>\n\n"
+               "4️⃣ <b>Earn ₹0.05 per view — credited in real time!</b>\n\n"
                "👇 Tap below to get started:"
            ),
            reply_markup=json.dumps({"inline_keyboard":[[{
@@ -140,10 +140,9 @@ class handler(BaseHTTPRequestHandler):
                     owner_id = str(ch_info.get("owner_id",""))
                     if not owner_id or ch_info.get("paid"): continue
 
-                    # Incremental earnings — only for newly crossed milestones
-                    old_milestones = old_views  // 100
-                    new_milestones = views       // 100
-                    increment      = (new_milestones - old_milestones) * RATE
+                    # Incremental earnings — continuous ₹0.05 per new view
+                    new_views = views - old_views
+                    increment = round(new_views * RATE, 2)
 
                     if increment <= 0: continue
 
@@ -156,7 +155,7 @@ class handler(BaseHTTPRequestHandler):
                     # Upsert earning record (total for this post-channel pair)
                     channels_cache = fb_get("channels") or {}
                     ch_title       = channels_cache.get(ch_key, {}).get("title", ch_key)
-                    total_earned   = new_milestones * RATE
+                    total_earned   = round(views * RATE, 2)
 
                     fb_set(f"earnings/{owner_id}/earn_{pid}_{ch_key}", {
                         "post_id":       pid,

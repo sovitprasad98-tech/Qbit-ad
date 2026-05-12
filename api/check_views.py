@@ -3,7 +3,7 @@ from http.server import BaseHTTPRequestHandler
 
 FB_URL       = os.environ.get("FIREBASE_URL","https://cyber-attack-c5414-default-rtdb.firebaseio.com")
 CRON_SECRET  = os.environ.get("CRON_SECRET","")
-RATE         = 5
+RATE         = 0.05  # ₹0.05 per view (= ₹5 per 100 views, continuous)
 MIN_VIEWS    = 100
 MATURITY_SEC = 86400   # 24 h
 
@@ -49,7 +49,7 @@ class handler(BaseHTTPRequestHandler):
                     views = ch_cache.get(ch_key, {}).get("avg_views", 0)
                 if views < MIN_VIEWS: continue
 
-                total_amount = (views // 100) * RATE
+                total_amount = round(views * RATE, 2)
 
                 # Avoid double-crediting what was already given via realtime webhook
                 existing = fb_get(f"earnings/{owner_id}/earn_{pid}_{ch_key}")
