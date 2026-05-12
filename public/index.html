@@ -1076,9 +1076,91 @@ async function confirmRemove(){
 
 
 /* ── POSTS ────────────────────────────────────────────────────────────── */
+
+/* ── CHECK DELETED POSTS ─────────────────────────────────────────────── */
+let deleteCheckTimer = null;
+
+async function checkDeletedPosts(myPosts){
+  if(!myPosts.length) return;
+  // Only check non-deleted, non-paid posts
+  const toCheck = myPosts
+    .filter(p=> !p.chInfo?.deleted && !p.chInfo?.paid)
+    .map(p=>({
+      pid:        p.pid,
+      ch_key:     p.chKey,
+      chat_id:    p.chInfo?.chat_id,
+      message_id: p.chInfo?.message_id
+    }))
+    .filter(x=> x.chat_id && x.message_id);
+
+  if(!toCheck.length) return;
+  try{
+    await fetch("/api/check_deleted",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({posts: toCheck})
+    });
+    // Firebase listener will auto-update UI when deleted:true is set
+  } catch(e){ console.warn("delete check failed", e); }
+}
+
+/* ── POSTS REALTIME ──────────────────────────────────────────────────── */
+let postsDbRef = null;  // single Firebase listener reference
+
+function renderPostCard(p){
+  const cardId  = `${p.pid}_${p.chKey}`;
+  const views   = p.chInfo?.views||0;
+  const prog    = Math.min((views/100)*100, 100);
+  const earned  = parseFloat((views*0.05).toFixed(2));
+  const typeIco = p.post_type==="photo"?"image" : p.post_type==="video"?"video" : "file-text";
+  const cap     = p.caption ? esc(p.caption) : "<em style='color:var(--t3)'>No caption</em>";
+  return `<div class="post-card" id="pcard-${cardId}">
+    <div class="post-top">
+      <div class="post-pill"><i data-lucide="${typeIco}"></i>Sponsored</div>
+      <span class="post-ts">${fmtDateTime(p.sent_at)}</span>
+    </div>
+    <div class="post-caption"><div class="post-caption-inner">${cap}</div></div>
+    <div class="post-meta">
+      <div class="pm"><i data-lucide="eye"></i><span class="pm-val" id="pv-${cardId}">${fmtN(views)}</span><span class="pm-lbl">Views</span></div>
+      <div class="pm"><i data-lucide="indian-rupee"></i><span class="pm-val" id="pe-${cardId}" style="color:var(--green)">₹${earned}</span><span class="pm-lbl">Earned</span></div>
+      <div class="pm"><i data-lucide="radio"></i><span class="pm-val">${esc(p.chKey)}</span></div>
+    </div>
+    <div class="vp">
+      <div class="vp-hd">
+        <span class="vp-cur" id="pvc-${cardId}">${views} views so far</span>
+        <span class="vp-nxt">₹0.05 per view · live</span>
+      </div>
+      <div class="vp-bg"><div class="vp-fill" id="pvf-${cardId}" style="width:${prog}%"></div></div>
+      <div class="vp-earn">
+        <span class="vp-earn-lbl">${p.chInfo?.paid?"✅ Final settlement done":"⏱ Earning in real time"}</span>
+        <span class="vp-earn-val" id="pvt-${cardId}">Total earned: ₹${earned}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updatePostCard(cardId, views){
+  const prog   = Math.min((views/100)*100,100);
+  const earned = parseFloat((views*0.05).toFixed(2));
+  const pvEl   = document.getElementById(`pv-${cardId}`);
+  const peEl   = document.getElementById(`pe-${cardId}`);
+  const pvcEl  = document.getElementById(`pvc-${cardId}`);
+  const pvfEl  = document.getElementById(`pvf-${cardId}`);
+  const pvtEl  = document.getElementById(`pvt-${cardId}`);
+  if(!pvEl) return;
+  pvEl.textContent  = fmtN(views);
+  peEl.textContent  = `₹${earned}`;
+  pvcEl.textContent = `${views} views so far`;
+  pvfEl.style.width = `${prog}%`;
+  pvtEl.textContent = `Total earned: ₹${earned}`;
+  peEl.classList.remove("flash"); void peEl.offsetWidth; peEl.classList.add("flash");
+}
+
 async function loadPosts(){
   const el=document.getElementById("posts-list");
   el.innerHTML=`<div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div>`;
+
+  // Detach old listener if exists
+  if(postsDbRef){ postsDbRef.off("value"); postsDbRef=null; }
 
   // Refresh user channel keys
   const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
@@ -1092,19 +1174,30 @@ async function loadPosts(){
     icons(); return;
   }
 
-  // Listen realtime
-  db.ref("sponsored_posts").on("value", snap=>{
+  // ── Single realtime listener on sponsored_posts ──
+  postsDbRef = db.ref("sponsored_posts");
+  postsDbRef.on("value", snap=>{
     const all=snap.val()||{};
     const myPosts=[];
+
     for(const [pid,pdata] of Object.entries(all)){
-      for(const [chk,ci] of Object.entries(pdata.channels||{})){
-        if(userChKeys.includes(chk)){
-          myPosts.push({pid, chKey:chk, chInfo:ci, ...pdata}); break;
+      const channels = pdata.channels||{};
+      for(const chk of userChKeys){
+        if(channels[chk]){
+          // Check if post still exists in channel (not deleted)
+          // deleted field set by webhook when Telegram fires channel_post delete
+          if(channels[chk].deleted) continue;
+          myPosts.push({pid, chKey:chk, chInfo:channels[chk], ...pdata});
+          break;
         }
       }
     }
     myPosts.sort((a,b)=>b.sent_at-a.sent_at);
     document.getElementById("posts-count").textContent=`${myPosts.length} post${myPosts.length!==1?"s":""}`;
+
+    // Periodically verify posts aren't deleted from Telegram
+    clearTimeout(deleteCheckTimer);
+    deleteCheckTimer = setTimeout(()=> checkDeletedPosts(myPosts), 3000);
 
     if(!myPosts.length){
       el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
@@ -1113,74 +1206,38 @@ async function loadPosts(){
       icons(); return;
     }
 
-    el.innerHTML=myPosts.map(p=>{
-      const cardId  = `${p.pid}_${p.chKey}`;
-      const views   = p.chInfo?.views||0;
-      const prog    = Math.min((views/100)*100, 100);
-      const earned  = parseFloat((views*0.05).toFixed(2));
-      const typeIco = p.post_type==="photo"?"image" : p.post_type==="video"?"video" : "file-text";
-      const cap     = p.caption ? esc(p.caption) : "<em style='color:var(--t3)'>No caption</em>";
-      return `<div class="post-card" id="pcard-${cardId}">
-        <div class="post-top">
-          <div class="post-pill"><i data-lucide="${typeIco}"></i>Sponsored</div>
-          <span class="post-ts">${fmtDateTime(p.sent_at)}</span>
-        </div>
-        <div class="post-caption"><div class="post-caption-inner">${cap}</div></div>
-        <div class="post-meta">
-          <div class="pm"><i data-lucide="eye"></i><span class="pm-val" id="pv-${cardId}">${fmtN(views)}</span><span class="pm-lbl">Views</span></div>
-          <div class="pm"><i data-lucide="indian-rupee"></i><span class="pm-val" id="pe-${cardId}" style="color:var(--green)">₹${earned}</span><span class="pm-lbl">Earned</span></div>
-          <div class="pm"><i data-lucide="radio"></i><span class="pm-val">${esc(p.chKey)}</span></div>
-        </div>
-        <div class="vp">
-          <div class="vp-hd">
-            <span class="vp-cur" id="pvc-${cardId}">${views} views so far</span>
-            <span class="vp-nxt">₹0.05 per view · live</span>
-          </div>
-          <div class="vp-bg"><div class="vp-fill" id="pvf-${cardId}" style="width:${prog}%"></div></div>
-          <div class="vp-earn">
-            <span class="vp-earn-lbl">${p.chInfo?.paid?"✅ Final settlement done":"⏱ Earning in real time"}</span>
-            <span class="vp-earn-val" id="pvt-${cardId}">Total earned: ₹${earned}</span>
-          </div>
-        </div>
-      </div>`;
-    }).join("");
-    // Attach per-post realtime listeners for views
-    myPosts.forEach(p=>{ if(!p.chInfo?.paid) listenPostViews(p.pid, p.chKey); });
+    // ── Smart DOM diff: update existing cards, add new, remove deleted ──
+    const existingIds = new Set([...el.querySelectorAll(".post-card")].map(c=>c.id));
+    const newIds      = new Set(myPosts.map(p=>`pcard-${p.pid}_${p.chKey}`));
+
+    // Remove deleted cards with fade
+    existingIds.forEach(id=>{
+      if(!newIds.has(id)){
+        const card=document.getElementById(id);
+        if(card){ card.style.opacity="0"; card.style.transition="opacity .3s"; setTimeout(()=>card.remove(),300); }
+      }
+    });
+
+    // Update or insert cards
+    myPosts.forEach((p,i)=>{
+      const cardId = `${p.pid}_${p.chKey}`;
+      const domId  = `pcard-${cardId}`;
+      if(existingIds.has(domId)){
+        // Card exists — just update views inline, no re-render
+        updatePostCard(cardId, p.chInfo?.views||0);
+      } else {
+        // New card — insert at correct position
+        const html = renderPostCard(p);
+        const tmp  = document.createElement("div");
+        tmp.innerHTML = html;
+        const newCard = tmp.firstElementChild;
+        const cards   = el.querySelectorAll(".post-card");
+        if(cards[i]) el.insertBefore(newCard, cards[i]);
+        else el.appendChild(newCard);
+      }
+    });
     icons();
   });
-}
-
-/* ── POST VIEWS REALTIME LISTENER ───────────────────────────────────── */
-const postListeners = {};
-
-function listenPostViews(pid, chKey){
-  const lkey = `${pid}_${chKey}`;
-  if(postListeners[lkey]) return;
-
-  const ref = db.ref(`sponsored_posts/${pid}/channels/${chKey}/views`);
-  const handler = ref.on("value", snap=>{
-    const views = snap.val()||0;
-    const prog  = Math.min((views/100)*100,100);
-    const earned = parseFloat((views*0.05).toFixed(2));
-    const cardId = lkey;
-
-    const pvEl  = document.getElementById(`pv-${cardId}`);
-    const peEl  = document.getElementById(`pe-${cardId}`);
-    const pvcEl = document.getElementById(`pvc-${cardId}`);
-    const pvfEl = document.getElementById(`pvf-${cardId}`);
-    const pvtEl = document.getElementById(`pvt-${cardId}`);
-    if(!pvEl) return; // card not in DOM
-
-    pvEl.textContent  = fmtN(views);
-    peEl.textContent  = `₹${earned}`;
-    pvcEl.textContent = `${views} views so far`;
-    pvfEl.style.width = `${prog}%`;
-    pvtEl.textContent = `Total earned: ₹${earned}`;
-
-    // Flash earned value
-    peEl.classList.remove("flash"); void peEl.offsetWidth; peEl.classList.add("flash");
-  });
-  postListeners[lkey] = handler;
 }
 
 
