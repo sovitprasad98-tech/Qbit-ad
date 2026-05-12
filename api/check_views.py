@@ -1,133 +1,88 @@
-"""
-Vercel Cron — runs every 6 hours.
-Checks sponsored posts older than 24h and credits earnings to channel owners.
-
-Earning logic:
-  - Uses live view count if tracked via webhook (edited_channel_post)
-  - Falls back to channel's avg_views if live count is 0
-  - ₹5 per 100 views, minimum 100 views to qualify
-"""
-
-import json
-import os
-import time
-import requests
+import json, os, time, requests
 from http.server import BaseHTTPRequestHandler
 
-FB_URL            = os.environ.get("FIREBASE_URL", "https://cyber-attack-c5414-default-rtdb.firebaseio.com")
-CRON_SECRET       = os.environ.get("CRON_SECRET",  "")
-RATE_PER_100      = 5    # ₹5 per 100 views
-MIN_VIEWS         = 100  # Minimum views to qualify for payout
-POST_MATURITY_SEC = 86400  # 24 hours before payout
+FB_URL       = os.environ.get("FIREBASE_URL","https://cyber-attack-c5414-default-rtdb.firebaseio.com")
+CRON_SECRET  = os.environ.get("CRON_SECRET","")
+RATE         = 5
+MIN_VIEWS    = 100
+MATURITY_SEC = 86400   # 24 h
 
 
-def fb_get(path):
-    try:
-        r = requests.get(f"{FB_URL}/{path}.json", timeout=10)
-        return r.json()
-    except Exception:
-        return None
+def fb_get(p):
+    try:    return requests.get(f"{FB_URL}/{p}.json", timeout=10).json()
+    except: return None
 
-def fb_set(path, data):
-    try:
-        requests.put(f"{FB_URL}/{path}.json", json=data, timeout=10)
-    except Exception:
-        pass
+def fb_set(p, d):
+    try: requests.put(f"{FB_URL}/{p}.json",   json=d, timeout=10)
+    except: pass
 
-def fb_patch(path, data):
-    try:
-        requests.patch(f"{FB_URL}/{path}.json", json=data, timeout=10)
-    except Exception:
-        pass
+def fb_patch(p, d):
+    try: requests.patch(f"{FB_URL}/{p}.json", json=d, timeout=10)
+    except: pass
 
 
 class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
-        # ── Auth check ───────────────────────────────────────────────────────
-        is_vercel = self.headers.get("x-vercel-cron") == "1"
-        bearer    = self.headers.get("Authorization", "")
-        if not is_vercel and bearer != f"Bearer {CRON_SECRET}":
-            self.send_response(401)
-            self.end_headers()
-            self.wfile.write(b"Unauthorized")
-            return
+        if (self.headers.get("x-vercel-cron") != "1"
+                and self.headers.get("Authorization") != f"Bearer {CRON_SECRET}"):
+            self.send_response(401); self.end_headers(); self.wfile.write(b"Unauthorized"); return
 
-        now           = int(time.time())
-        paid_channels = 0
-        total_amount  = 0.0
-
-        posts         = fb_get("sponsored_posts") or {}
-        channels_data = fb_get("channels")        or {}
+        now         = int(time.time())
+        paid_count  = 0
+        total_paid  = 0.0
+        posts       = fb_get("sponsored_posts") or {}
+        ch_cache    = fb_get("channels")         or {}
 
         for pid, pdata in posts.items():
-            sent_at = pdata.get("sent_at", 0)
+            if now - pdata.get("sent_at",0) < MATURITY_SEC: continue
 
-            # Skip posts younger than 24h
-            if now - sent_at < POST_MATURITY_SEC:
-                continue
+            for ch_key, ci in (pdata.get("channels") or {}).items():
+                if ci.get("paid"): continue
 
-            for ch_key, ch_info in (pdata.get("channels") or {}).items():
-                if ch_info.get("paid"):
-                    continue
+                owner_id = str(ci.get("owner_id",""))
+                if not owner_id: continue
 
-                owner_id = str(ch_info.get("owner_id", ""))
-                if not owner_id:
-                    continue
-
-                # Use live tracked views, else fall back to channel avg
-                views = ch_info.get("views", 0)
+                # Views: prefer live tracked, else channel avg
+                views = ci.get("views", 0)
                 if views < MIN_VIEWS:
-                    avg = channels_data.get(ch_key, {}).get("avg_views", 0)
-                    views = avg
+                    views = ch_cache.get(ch_key, {}).get("avg_views", 0)
+                if views < MIN_VIEWS: continue
 
-                if views < MIN_VIEWS:
-                    continue
+                total_amount = (views // 100) * RATE
 
-                amount = round((views / 100) * RATE_PER_100, 2)
+                # Avoid double-crediting what was already given via realtime webhook
+                existing = fb_get(f"earnings/{owner_id}/earn_{pid}_{ch_key}")
+                already  = existing.get("amount", 0) if existing else 0
+                remaining = round(total_amount - already, 2)
 
-                # ── Credit wallet ────────────────────────────────────────────
-                user = fb_get(f"users/{owner_id}")
-                if not user:
-                    continue
+                if remaining > 0:
+                    user = fb_get(f"users/{owner_id}")
+                    if not user: continue
+                    new_bal = round(float(user.get("wallet_balance",0)) + remaining, 2)
+                    fb_patch(f"users/{owner_id}", {"wallet_balance": new_bal})
 
-                new_bal = round(float(user.get("wallet_balance", 0)) + amount, 2)
-                fb_patch(f"users/{owner_id}", {"wallet_balance": new_bal})
+                    ch_title = ch_cache.get(ch_key, {}).get("title", ch_key)
+                    fb_set(f"earnings/{owner_id}/earn_{pid}_{ch_key}", {
+                        "post_id":       pid,
+                        "channel_key":   ch_key,
+                        "channel_title": ch_title,
+                        "views":         views,
+                        "amount":        total_amount,
+                        "earned_at":     now * 1000
+                    })
+                    paid_count += 1
+                    total_paid += remaining
 
-                # ── Mark post-channel as paid ────────────────────────────────
                 fb_patch(f"sponsored_posts/{pid}/channels/{ch_key}", {
-                    "paid"       : True,
-                    "paid_amount": amount,
-                    "paid_views" : views,
-                    "paid_at"    : now
+                    "paid": True, "paid_at": now,
+                    "paid_amount": total_amount, "paid_views": views
                 })
 
-                # ── Write earning record ─────────────────────────────────────
-                ch_title = channels_data.get(ch_key, {}).get("title", ch_key)
-                fb_set(f"earnings/{owner_id}/earn_{pid}_{ch_key}", {
-                    "post_id"      : pid,
-                    "channel_key"  : ch_key,
-                    "channel_title": ch_title,
-                    "views"        : views,
-                    "amount"       : amount,
-                    "earned_at"    : now * 1000  # ms for JS Date compatibility
-                })
-
-                paid_channels += 1
-                total_amount  += amount
-
-        result = json.dumps({
-            "ok"            : True,
-            "paid_channels" : paid_channels,
-            "total_amount"  : round(total_amount, 2),
-            "checked_at"    : now
-        }).encode()
-
+        res = json.dumps({"ok":True,"paid":paid_count,"total":round(total_paid,2)}).encode()
         self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(result)))
-        self.end_headers()
-        self.wfile.write(result)
+        self.send_header("Content-Type","application/json")
+        self.send_header("Content-Length",str(len(res)))
+        self.end_headers(); self.wfile.write(res)
 
-    def log_message(self, *args):
-        pass
+    def log_message(self, *a): pass
