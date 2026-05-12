@@ -1,7 +1,7 @@
 import json, os, requests
 from http.server import BaseHTTPRequestHandler
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN","8724448269:AAGfYdcR6u7S9BW3plxiIRm-oV2Tix-zbNQ")
+BOT_TOKEN = os.environ.get("BOT_TOKEN","8729878269:AAEXcfd0fHweIpJBWVYwLr6tkyike6-5ais")
 
 def tg(method, **kw):
     return requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/{method}", json=kw, timeout=10).json()

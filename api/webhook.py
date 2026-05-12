@@ -1,7 +1,7 @@
 import json, os, time, requests
 from http.server import BaseHTTPRequestHandler
 
-BOT_TOKEN  = os.environ.get("BOT_TOKEN",  "8724448269:AAGfYdcR6u7S9BW3plxiIRm-oV2Tix-zbNQ")
+BOT_TOKEN  = os.environ.get("BOT_TOKEN",  "8729878269:AAEXcfd0fHweIpJBWVYwLr6tkyike6-5ais")
 FB_URL     = os.environ.get("FIREBASE_URL","https://cyber-attack-c5414-default-rtdb.firebaseio.com")
 WEBAPP_URL = os.environ.get("WEBAPP_URL",  "https://your-project.vercel.app")
 OFFICIAL   = "qbit_ad"
