@@ -7,886 +7,1124 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-/* ── Variables ── */
 :root{
-  --bg:#080A10;--bg-card:#0D1117;--bg-el:#141922;
-  --gold:#F5C518;--gold-dim:rgba(245,197,24,.12);--gold-border:rgba(245,197,24,.25);
-  --text:#EEF2FF;--text2:#64748B;--text3:#2D3748;
-  --border:rgba(255,255,255,.07);
-  --green:#22C55E;--green-dim:rgba(34,197,94,.12);
-  --red:#EF4444;--red-dim:rgba(239,68,68,.12);
-  --amber:#F59E0B;--amber-dim:rgba(245,158,11,.12);
-  --nav:70px;
+  --p:#6366F1;--pd:#4F46E5;--pl:#EEF2FF;--pb:rgba(99,102,241,.15);
+  --bg:#F1F5F9;--card:#fff;
+  --t:#0F172A;--t2:#475569;--t3:#94A3B8;
+  --border:#E2E8F0;
+  --green:#10B981;--greenbg:#ECFDF5;
+  --amber:#F59E0B;--amberbg:#FFFBEB;
+  --red:#EF4444;--redbg:#FEF2F2;
+  --sh:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+  --shm:0 4px 12px rgba(15,23,42,.08);
+  --shl:0 12px 32px rgba(15,23,42,.12);
+  --r:12px;--rl:16px;--rx:20px;--nav:68px;
 }
-/* ── Reset ── */
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow:hidden}
-button{cursor:pointer;font-family:'DM Sans',sans-serif}
-input{font-family:'DM Sans',sans-serif}
-b{font-weight:700}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5}
+button{cursor:pointer;font-family:'Inter',sans-serif;border:none;background:none}
+input{font-family:'Inter',sans-serif}
 
 /* ── Loading ── */
-#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:24px;z-index:9999}
-.ld-logo{width:72px;height:72px;background:var(--gold);border-radius:20px;
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Sora',sans-serif;font-size:32px;font-weight:800;color:#000;
-  animation:ldpulse 1.4s ease-in-out infinite}
-@keyframes ldpulse{0%,100%{transform:scale(1)}50%{transform:scale(.93);opacity:.85}}
-.ld-ring{width:36px;height:36px;border:3px solid var(--border);
-  border-top-color:var(--gold);border-radius:50%;animation:spin .75s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ld-txt{font-size:13px;color:var(--text2);font-weight:500}
+#ld{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:9999}
+.ld-box{width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(99,102,241,.35);animation:ldp 1.4s ease-in-out infinite}
+.ld-box svg{width:26px;height:26px;color:#fff;stroke-width:2.5}
+@keyframes ldp{0%,100%{transform:scale(1)}50%{transform:scale(.92)}}
+.ld-bar{width:110px;height:3px;background:#E2E8F0;border-radius:99px;overflow:hidden}
+.ld-fill{height:100%;background:linear-gradient(90deg,#6366F1,#8B5CF6);border-radius:99px;animation:ldf 1.5s ease infinite}
+@keyframes ldf{0%{width:0;opacity:1}80%{width:100%;opacity:1}100%{width:100%;opacity:0}}
+.ld-txt{font-size:12px;color:var(--t3);font-weight:500}
 
 /* ── Toast ── */
-#toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-90px);
-  background:var(--bg-el);color:var(--text);padding:11px 20px;border-radius:12px;
-  font-size:13px;font-weight:600;z-index:9998;transition:transform .3s ease;
-  white-space:nowrap;border:1px solid var(--border);max-width:90vw;text-align:center}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%) translateY(-90px);
+  background:var(--t);color:#fff;padding:10px 18px;border-radius:99px;font-size:13px;
+  font-weight:500;z-index:9998;transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  white-space:nowrap;max-width:90vw;text-align:center;box-shadow:var(--shl)}
 #toast.show{transform:translateX(-50%) translateY(0)}
-#toast.success{border-color:var(--green);color:var(--green)}
-#toast.error{border-color:var(--red);color:var(--red)}
-#toast.info{border-color:var(--amber);color:var(--amber)}
+#toast.s{background:var(--green)}
+#toast.e{background:var(--red)}
+#toast.i{background:var(--p)}
 
-/* ── App shell ── */
-#app{display:none;height:100vh;flex-direction:column;position:relative}
-
-/* ── Pages ── */
+/* ── App ── */
+#app{display:none;height:100vh;flex-direction:column}
 .page{display:none;flex:1;overflow:hidden;flex-direction:column}
 .page.active{display:flex}
-.scroll{flex:1;overflow-y:auto;padding:20px 16px calc(var(--nav) + 20px);scrollbar-width:none}
+.scroll{flex:1;overflow-y:auto;padding:0 0 calc(var(--nav)+16px);scrollbar-width:none}
 .scroll::-webkit-scrollbar{display:none}
 
-/* ── Top bar ── */
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
-.tb-left{display:flex;align-items:center;gap:10px}
-.avatar{width:40px;height:40px;background:var(--gold);border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Sora',sans-serif;font-weight:700;font-size:16px;color:#000;flex-shrink:0}
-.tb-name{font-weight:600;font-size:15px}
-.tb-brand{font-family:'Sora',sans-serif;font-weight:800;font-size:18px;color:var(--gold)}
+/* ── Page Header ── */
+.pgbar{background:rgba(241,245,249,.92);backdrop-filter:blur(16px);
+  padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20}
+.pgbar-title{font-size:17px;font-weight:700}
+.pgbar-back{display:flex;align-items:center;gap:5px;color:var(--p);font-size:13px;font-weight:600}
+.pgbar-back svg{width:16px;height:16px}
+.pgbar-action{font-size:13px;font-weight:600;color:var(--p);display:flex;align-items:center;gap:5px}
+.pgbar-action svg{width:15px;height:15px}
 
-/* ── Balance card ── */
-.bal-card{background:linear-gradient(135deg,#1A2035 0%,#0F1520 100%);
-  border:1px solid var(--gold-border);border-radius:22px;
-  padding:28px 24px;margin-bottom:18px;position:relative;overflow:hidden}
-.bal-label{font-size:12px;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px;font-weight:600}
-.bal-amount{font-family:'Sora',sans-serif;font-size:42px;font-weight:800;
-  color:var(--gold);line-height:1;margin-bottom:8px}
-.bal-sub{font-size:12px;color:var(--text2)}
-.bal-glow{position:absolute;right:-40px;bottom:-40px;width:180px;height:180px;
-  border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.08) 0%,transparent 70%)}
-.bal-glow2{position:absolute;left:-20px;top:-20px;width:100px;height:100px;
-  border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.04) 0%,transparent 70%)}
+/* ── Home Top Bar ── */
+.hbar{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 0}
+.hbar-brand{display:flex;align-items:center;gap:8px}
+.hbar-logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#6366F1,#8B5CF6);
+  display:flex;align-items:center;justify-content:center}
+.hbar-logo svg{width:15px;height:15px;color:#fff;stroke-width:2.5}
+.hbar-name{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.hbar-user{display:flex;align-items:center;gap:8px}
+.h-avatar{width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,#6366F1,#8B5CF6);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.h-uname{font-size:13px;font-weight:600;color:var(--t2)}
 
-/* ── Stats row ── */
-.stats-row{display:flex;background:var(--bg-card);border-radius:16px;
-  border:1px solid var(--border);padding:16px 8px;margin-bottom:20px}
-.stat-box{flex:1;text-align:center}
-.stat-val{font-family:'Sora',sans-serif;font-size:17px;font-weight:700}
-.stat-lbl{font-size:10px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
-.stat-div{width:1px;background:var(--border);margin:4px 0}
+/* ── Balance Hero ── */
+.bal-hero{
+  background:linear-gradient(135deg,#4338CA 0%,#6D28D9 60%,#7C3AED 100%);
+  border-radius:var(--rx);padding:22px;margin:14px 16px 0;
+  position:relative;overflow:hidden;color:#fff;
+  box-shadow:0 8px 32px rgba(99,102,241,.4)}
+.bal-live{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);
+  border-radius:99px;padding:3px 10px;font-size:10px;font-weight:700;letter-spacing:.3px;
+  text-transform:uppercase;margin-bottom:10px}
+.ldot{width:6px;height:6px;border-radius:50%;background:#4ADE80;animation:ldpls 1.5s ease infinite}
+@keyframes ldpls{0%,100%{opacity:1}50%{opacity:.4}}
+.bal-lbl{font-size:11px;opacity:.7;font-weight:500;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+.bal-amt{font-size:36px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+.bal-amt.flash{animation:bflash .5s ease}
+@keyframes bflash{0%,100%{opacity:1}40%{opacity:.4;transform:scale(1.03)}}
+.bal-sub{font-size:11px;opacity:.65;margin-top:5px}
+.bal-circles{position:absolute;right:-24px;top:-24px;pointer-events:none}
+.bc{width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.06)}
+.bc2{position:absolute;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.04);right:-10px;bottom:-10px}
+.bal-proj{display:flex;align-items:center;gap:6px;margin-top:12px;
+  background:rgba(255,255,255,.12);border-radius:99px;padding:6px 12px;
+  width:fit-content;font-size:11px;font-weight:600}
+.bal-proj svg{width:13px;height:13px}
+
+/* ── Quick Stats ── */
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px 0}
+.qcard{background:var(--card);border-radius:var(--rl);padding:14px;box-shadow:var(--sh)}
+.qico{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.qico svg{width:16px;height:16px;stroke-width:2}
+.qico.v{background:var(--pl)} .qico.v svg{color:var(--p)}
+.qico.g{background:var(--greenbg)} .qico.g svg{color:var(--green)}
+.qico.a{background:var(--amberbg)} .qico.a svg{color:var(--amber)}
+.qico.pk{background:#FDF2F8} .qico.pk svg{color:#EC4899}
+.qval{font-size:20px;font-weight:800;letter-spacing:-.5px}
+.qlbl{font-size:11px;color:var(--t3);font-weight:500;margin-top:2px}
 
 /* ── Section ── */
-.sec{margin-bottom:24px}
-.sec-title{font-size:11px;font-weight:700;color:var(--text2);
-  text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.sec{padding:16px 16px 0}
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-title{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+.sec-link{font-size:12px;font-weight:600;color:var(--p)}
 
-/* ── Page header ── */
-.pg-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-.pg-title{font-family:'Sora',sans-serif;font-size:22px;font-weight:800}
-.back-btn{background:none;border:none;color:var(--text2);font-size:14px;padding:4px 0;display:flex;align-items:center;gap:6px}
-.add-btn{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);
-  border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600}
-
-/* ── Buttons ── */
-.btn{width:100%;padding:15px;border:none;border-radius:14px;
-  font-family:'Sora',sans-serif;font-size:15px;font-weight:700;
-  transition:opacity .2s,transform .1s;margin-top:14px}
-.btn:active{transform:scale(.98)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-gold{background:var(--gold);color:#000}
-.btn-outline{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border)}
-
-/* ── Input ── */
-.inp{width:100%;padding:14px 16px;background:var(--bg-el);
-  border:1.5px solid var(--border);border-radius:13px;
-  color:var(--text);font-size:14px;outline:none;transition:border-color .2s}
-.inp:focus{border-color:var(--gold)}
-.inp::placeholder{color:var(--text3)}
-.inp-label{font-size:11px;font-weight:700;color:var(--text2);
-  text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px}
-.inp-group{margin-bottom:16px}
-.amt-row{display:flex;gap:8px}
-.amt-row .inp{flex:1}
-.max-btn{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-border);
-  border-radius:13px;padding:0 16px;font-size:12px;font-weight:700;white-space:nowrap}
-
-/* ── Cards ── */
-.card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:20px}
-
-/* ── Step card ── */
-.step-card{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:22px}
-.step-badge{display:inline-flex;align-items:center;gap:6px;
-  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
-  padding:4px 12px;border-radius:20px;margin-bottom:14px}
-.step-badge.gold{background:var(--gold-dim);color:var(--gold)}
-.step-badge.amber{background:var(--amber-dim);color:var(--amber)}
-.step-badge.green{background:var(--green-dim);color:var(--green)}
-.step-title{font-family:'Sora',sans-serif;font-size:19px;font-weight:700;margin-bottom:6px}
-.step-desc{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5}
-
-/* ── Instruction list ── */
-.inst-list{margin:4px 0 6px}
-.inst-item{display:flex;gap:12px;align-items:flex-start;
-  padding:11px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5;color:var(--text)}
-.inst-item:last-child{border:none}
-.inst-n{min-width:24px;height:24px;border-radius:50%;background:var(--gold-dim);color:var(--gold);
-  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
-
-/* ── Pending channel box ── */
-.pending-box{display:flex;align-items:center;gap:12px;
-  padding:14px;background:var(--bg-el);border-radius:13px;margin-bottom:18px}
-.pending-icon{font-size:26px}
-.pending-name{font-size:15px;font-weight:600}
-.pending-user{font-size:12px;color:var(--text2);margin-top:2px}
-
-/* ── Channel preview ── */
-.ch-preview{display:flex;align-items:center;gap:14px;
-  padding:16px;background:var(--bg-el);border-radius:14px;margin-bottom:16px}
-.prev-av{width:52px;height:52px;border-radius:50%;background:var(--gold);
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Sora',sans-serif;font-weight:700;font-size:22px;color:#000;flex-shrink:0}
-.prev-title{font-size:15px;font-weight:700}
-.prev-user{font-size:12px;color:var(--text2);margin-top:3px}
-.prev-stats{display:flex;gap:8px;margin-bottom:6px}
-.prev-stat{flex:1;background:var(--bg-el);border-radius:12px;padding:12px 8px;text-align:center}
-.prev-stat.gold-stat{background:var(--gold-dim);border:1px solid var(--gold-border)}
-.ps-val{font-family:'Sora',sans-serif;font-size:15px;font-weight:700}
-.gold-stat .ps-val{color:var(--gold)}
-.ps-lbl{font-size:10px;color:var(--text2);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
-
-/* ── Channel cards ── */
-.ch-card{background:var(--bg-card);border:1px solid var(--border);
-  border-radius:18px;padding:16px;margin-bottom:12px}
-.ch-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.ch-av{width:46px;height:46px;border-radius:50%;background:var(--gold);
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Sora',sans-serif;font-weight:700;font-size:18px;color:#000;flex-shrink:0}
-.ch-info{flex:1;min-width:0}
-.ch-name{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ch-user{font-size:12px;color:var(--text2);margin-top:2px}
-.ch-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:700;flex-shrink:0}
-.ch-badge.active{background:var(--green-dim);color:var(--green)}
-.ch-badge.inactive{background:var(--red-dim);color:var(--red)}
-.ch-stats{display:flex}
-.ch-s{flex:1;text-align:center}
-.ch-s-val{font-family:'Sora',sans-serif;font-size:14px;font-weight:700}
-.ch-s-lbl{font-size:10px;color:var(--text2);margin-top:3px;text-transform:uppercase;letter-spacing:.3px;font-weight:600}
+/* ── Card ── */
+.card{background:var(--card);border-radius:var(--rl);box-shadow:var(--sh)}
 
 /* ── List items ── */
-.list-item{display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg-card);border:1px solid var(--border);
-  border-radius:13px;padding:13px 14px;margin-bottom:8px}
-.li-left{display:flex;align-items:center;gap:12px}
-.li-icon{font-size:22px;line-height:1}
+.li{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid var(--border)}
+.li:last-child{border:0}
+.li-l{display:flex;align-items:center;gap:10px}
+.li-ico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.li-ico svg{width:16px;height:16px;stroke-width:2}
+.li-ico.earn{background:var(--greenbg)} .li-ico.earn svg{color:var(--green)}
+.li-ico.post{background:var(--pl)} .li-ico.post svg{color:var(--p)}
+.li-ico.wd{background:var(--amberbg)} .li-ico.wd svg{color:var(--amber)}
 .li-title{font-size:13px;font-weight:600}
-.li-sub{font-size:11px;color:var(--text2);margin-top:2px}
-.li-amt{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:var(--green)}
+.li-sub{font-size:11px;color:var(--t3);margin-top:1px}
+.li-amt{font-size:14px;font-weight:700;color:var(--green)}
+.li-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px}
+.li-badge.pending{background:var(--amberbg);color:var(--amber)}
+.li-badge.paid{background:var(--greenbg);color:var(--green)}
+.li-badge.rejected{background:var(--redbg);color:var(--red)}
 
-/* ── Wallet mini header ── */
-.bal-mini{background:var(--bg-card);border:1px solid var(--gold-border);
-  border-radius:16px;padding:18px 20px;margin-bottom:18px;
-  display:flex;justify-content:space-between;align-items:center}
-.bm-label{font-size:12px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.bm-val{font-family:'Sora',sans-serif;font-size:26px;font-weight:800;color:var(--gold)}
+/* ── Buttons ── */
+.btn{width:100%;padding:13px;border-radius:var(--r);font-size:14px;font-weight:600;
+  transition:opacity .15s,transform .1s;letter-spacing:-.1px}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-p{background:var(--p);color:#fff;box-shadow:0 4px 12px rgba(99,102,241,.3)}
+.btn-s{background:var(--pl);color:var(--p)}
+.btn-o{background:#fff;color:var(--t);border:1.5px solid var(--border)}
 
-/* ── Wallet page balance card ── */
-.wal-hero{background:linear-gradient(135deg,#1A2035 0%,#0F1520 100%);
-  border:1px solid var(--gold-border);border-radius:20px;padding:22px 22px 18px;margin-bottom:18px}
+/* ── Input ── */
+.inp{width:100%;padding:12px 14px;background:#fff;border:1.5px solid var(--border);
+  border-radius:var(--r);font-size:14px;color:var(--t);outline:none;
+  transition:border-color .15s,box-shadow .15s}
+.inp:focus{border-color:var(--p);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.inp::placeholder{color:var(--t3)}
+.ig{margin-bottom:14px}
+.il{display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+.amt-row{display:flex;gap:8px}
+.amt-row .inp{flex:1}
+.max-btn{background:var(--pl);color:var(--p);border-radius:var(--r);
+  padding:0 14px;font-size:12px;font-weight:700;white-space:nowrap}
 
-/* ── Withdrawal items ── */
+/* ── Step UI ── */
+.step-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;padding:3px 11px;border-radius:99px;margin-bottom:11px}
+.step-pill.a{background:var(--pl);color:var(--p)}
+.step-pill.w{background:var(--amberbg);color:var(--amber)}
+.step-pill.ok{background:var(--greenbg);color:var(--green)}
+.step-pill svg{width:11px;height:11px;stroke-width:2.5}
+.step-h{font-size:18px;font-weight:700;margin-bottom:4px}
+.step-d{font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.6}
+
+/* Instructions */
+.inst-list{margin-bottom:16px}
+.inst-item{display:flex;gap:11px;align-items:flex-start;padding:10px 0;
+  border-bottom:1px solid var(--border);font-size:13px;line-height:1.5}
+.inst-item:last-child{border:0}
+.in{min-width:22px;height:22px;border-radius:50%;background:var(--pl);color:var(--p);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+
+/* Channel preview */
+.ch-prev-box{display:flex;align-items:center;gap:12px;
+  background:var(--bg);border-radius:var(--r);padding:13px;margin-bottom:14px}
+.cp-av{width:46px;height:46px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#6366F1,#8B5CF6);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700}
+.cp-name{font-size:14px;font-weight:700}
+.cp-user{font-size:12px;color:var(--t3);margin-top:2px}
+.prev-stats{display:flex;gap:8px;margin-bottom:14px}
+.ps{flex:1;background:var(--bg);border-radius:var(--r);padding:11px 8px;text-align:center}
+.ps.hl{background:var(--pl);border:1px solid var(--pb)}
+.psv{font-size:14px;font-weight:800;letter-spacing:-.3px}
+.ps.hl .psv{color:var(--p)}
+.psl{font-size:10px;font-weight:600;color:var(--t3);margin-top:3px;text-transform:uppercase;letter-spacing:.3px}
+
+/* ── Channel Cards ── */
+.ch-card{background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);margin-bottom:10px}
+.ch-inner{padding:15px}
+.ch-hd{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.ch-av{width:44px;height:44px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,#6366F1,#8B5CF6);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700}
+.ch-inf{flex:1;min-width:0}
+.ch-nm{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch-un{font-size:11px;color:var(--t3);margin-top:1px}
+.badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px;flex-shrink:0}
+.badge.on{background:var(--greenbg);color:var(--green)}
+.badge.off{background:var(--redbg);color:var(--red)}
+.ch-stats{display:flex;border-top:1px solid var(--border);padding:11px 15px 0;margin-top:0;padding-bottom:13px}
+.cs{flex:1;text-align:center}
+.csv{font-size:14px;font-weight:700}
+.csl{font-size:10px;color:var(--t3);font-weight:600;margin-top:2px;text-transform:uppercase;letter-spacing:.2px}
+/* Health score */
+.health{padding:0 15px 14px}
+.health-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.health-lbl{font-size:11px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:4px}
+.health-lbl svg{width:11px;height:11px;color:var(--p)}
+.health-val{font-size:11px;font-weight:700;color:var(--p)}
+.hbar-bg{height:5px;background:var(--bg);border-radius:99px;overflow:hidden}
+.hbar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#6366F1,#8B5CF6);transition:width .6s ease}
+.est-tag{display:flex;align-items:center;justify-content:space-between;
+  background:var(--pl);border-radius:0 0 var(--rl) var(--rl);padding:9px 15px}
+.est-lbl{font-size:11px;color:var(--p);font-weight:600;display:flex;align-items:center;gap:5px}
+.est-lbl svg{width:12px;height:12px}
+.est-val{font-size:13px;font-weight:800;color:var(--p)}
+
+/* ── Sponsored Post Cards ── */
+.post-card{background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden}
+.post-top{display:flex;align-items:center;justify-content:space-between;padding:13px 14px 10px}
+.post-pill{display:flex;align-items:center;gap:5px;background:var(--pl);
+  color:var(--p);font-size:10px;font-weight:700;padding:4px 9px;border-radius:99px;text-transform:uppercase;letter-spacing:.3px}
+.post-pill svg{width:11px;height:11px}
+.post-ts{font-size:11px;color:var(--t3)}
+.post-caption{font-size:13px;color:var(--t2);padding:0 14px 10px;
+  line-height:1.55;border-left:0;position:relative}
+.post-caption::before{content:'';position:absolute;left:14px;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,#6366F1,#8B5CF6);border-radius:99px}
+.post-caption-inner{padding-left:12px}
+.post-meta{display:flex;align-items:center;gap:14px;padding:0 14px 12px}
+.pm{display:flex;align-items:center;gap:5px}
+.pm svg{width:13px;height:13px;color:var(--t3);stroke-width:2}
+.pm-val{font-size:12px;font-weight:600}
+.pm-lbl{font-size:11px;color:var(--t3)}
+/* View progress */
+.vp{padding:10px 14px 14px;border-top:1px solid var(--border)}
+.vp-hd{display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px}
+.vp-cur{font-weight:600}
+.vp-nxt{color:var(--t3)}
+.vp-bg{height:6px;background:var(--bg);border-radius:99px;overflow:hidden}
+.vp-fill{height:100%;background:linear-gradient(90deg,#6366F1,#8B5CF6);border-radius:99px;transition:width .5s ease}
+.vp-earn{display:flex;align-items:center;justify-content:space-between;margin-top:7px}
+.vp-earn-lbl{font-size:11px;color:var(--t3)}
+.vp-earn-val{font-size:13px;font-weight:700;color:var(--green)}
+
+/* ── Wallet ── */
+.wal-hero{background:linear-gradient(135deg,#0F172A 0%,#1E293B 100%);
+  border-radius:var(--rx);padding:20px;margin:0 16px;color:#fff;box-shadow:var(--shm)}
+.wh-lbl{font-size:11px;opacity:.6;font-weight:500;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+.wh-bal{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1}
+.wh-bal.flash{animation:bflash .5s ease}
+.wh-row{display:flex;gap:8px;margin-top:14px}
+.wh-btn{flex:1;background:rgba(255,255,255,.1);border-radius:var(--r);padding:10px;
+  text-align:center;color:#fff;display:flex;flex-direction:column;align-items:center;gap:5px}
+.wh-btn svg{width:16px;height:16px;stroke-width:2}
+.wh-btn-lbl{font-size:11px;font-weight:600;opacity:.8}
+
+/* Chart */
+.chart-wrap{background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);padding:16px;margin-top:10px}
+.chart-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.chart-title{font-size:13px;font-weight:700}
+.chart-sub{font-size:11px;color:var(--t3)}
+
+/* ── Withdraw ── */
+.wd-bal-card{display:flex;align-items:center;justify-content:space-between;
+  background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);padding:15px 16px;margin-bottom:0}
+.wdb-lbl{font-size:11px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.wdb-val{font-size:24px;font-weight:800;color:var(--p);letter-spacing:-.5px}
+.wdb-ico{width:42px;height:42px;background:var(--pl);border-radius:12px;
+  display:flex;align-items:center;justify-content:center}
+.wdb-ico svg{width:20px;height:20px;color:var(--p);stroke-width:2}
+.wd-form{background:var(--card);border-radius:var(--rx);box-shadow:var(--shm);padding:18px}
 .wd-item{display:flex;align-items:center;justify-content:space-between;
-  background:var(--bg-card);border:1px solid var(--border);
-  border-radius:13px;padding:13px 14px;margin-bottom:8px}
-.wd-left .wd-upi{font-size:13px;font-weight:600}
-.wd-left .wd-date{font-size:11px;color:var(--text2);margin-top:2px}
-.wd-right{text-align:right}
-.wd-amt{font-family:'Sora',sans-serif;font-weight:700;font-size:15px}
-.wd-status{font-size:11px;margin-top:3px;font-weight:600}
-.wd-status.pending{color:var(--amber)}
-.wd-status.paid{color:var(--green)}
-.wd-status.rejected{color:var(--red)}
+  background:var(--card);border-radius:var(--r);box-shadow:var(--sh);
+  padding:13px 14px;margin-bottom:8px}
+.wdi-l .wdi-upi{font-size:13px;font-weight:600}
+.wdi-l .wdi-date{font-size:11px;color:var(--t3);margin-top:2px}
+.wdi-r{text-align:right}
+.wdi-amt{font-size:14px;font-weight:700}
+.wdi-status{font-size:11px;font-weight:600;margin-top:2px}
+.wdi-status.pending{color:var(--amber)}
+.wdi-status.paid{color:var(--green)}
+.wdi-status.rejected{color:var(--red)}
 
-/* ── Empty state ── */
-.empty{text-align:center;padding:44px 20px}
-.empty-ico{font-size:44px;margin-bottom:14px}
-.empty p{color:var(--text2);font-size:14px;line-height:1.6}
-.empty .esub{font-size:12px;margin-top:4px;color:var(--text3)}
+/* ── Empty ── */
+.empty{text-align:center;padding:40px 20px}
+.empty-ico{width:52px;height:52px;border-radius:15px;background:var(--pl);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 13px}
+.empty-ico svg{width:24px;height:24px;color:var(--p);stroke-width:1.5}
+.empty-title{font-size:15px;font-weight:700;margin-bottom:5px}
+.empty-desc{font-size:13px;color:var(--t2);line-height:1.6}
+
+/* ── Skeleton ── */
+.sk{background:linear-gradient(90deg,#F1F5F9 25%,#E2E8F0 50%,#F1F5F9 75%);
+  background-size:200% 100%;animation:sk 1.5s infinite;border-radius:var(--r)}
+@keyframes sk{0%{background-position:200%}100%{background-position:-200%}}
+.sk-card{height:76px;margin-bottom:10px;border-radius:var(--rl)}
+.sk-ln{height:13px;margin-bottom:8px}
+.sk-ln.sm{width:55%}
 
 /* ── Bottom Nav ── */
-#nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav);
-  background:rgba(13,17,23,.96);backdrop-filter:blur(20px) saturate(180%);
-  border-top:1px solid var(--border);display:flex;z-index:100;
-  padding-bottom:env(safe-area-inset-bottom,0px)}
+#nav{height:var(--nav);background:rgba(255,255,255,.95);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);display:flex;flex-shrink:0;
+  padding-bottom:env(safe-area-inset-bottom,0)}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:4px;background:none;border:none;color:var(--text2);transition:color .2s}
-.nb.active{color:var(--gold)}
-.nb-ico{font-size:21px;line-height:1}
-.nb-lbl{font-size:10px;font-weight:600;letter-spacing:.2px}
+  gap:4px;color:var(--t3);transition:color .2s;position:relative;padding:0 4px}
+.nb.active{color:var(--p)}
+.nb svg{width:20px;height:20px;stroke-width:2}
+.nb-lbl{font-size:10px;font-weight:600}
+.nb-dot{position:absolute;top:6px;right:50%;transform:translateX(12px);
+  width:7px;height:7px;border-radius:50%;background:var(--red);
+  border:2px solid #fff;display:none}
+.nb-dot.show{display:block}
 
-/* ── Spinner (inline) ── */
-.spin-sm{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.2);
-  border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
+/* ── Misc ── */
+.divider{height:1px;background:var(--border);margin:12px 0}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;
+  padding:3px 9px;border-radius:99px}
+.tag svg{width:11px;height:11px;stroke-width:2}
+.tag.p{background:var(--pl);color:var(--p)}
+.tag.g{background:var(--greenbg);color:var(--green)}
+.tag.a{background:var(--amberbg);color:var(--amber)}
 </style>
 </head>
 <body>
 
-<!-- ── Loading ─────────────────────────────────────────────────────────── -->
-<div id="loading">
-  <div class="ld-logo">Q</div>
-  <div class="ld-ring"></div>
-  <div class="ld-txt">Loading Qbit Ad…</div>
+<!-- Loading -->
+<div id="ld">
+  <div class="ld-box"><i data-lucide="zap"></i></div>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+  <div class="ld-txt">Initializing Qbit Ad…</div>
 </div>
 
-<!-- ── Toast ───────────────────────────────────────────────────────────── -->
+<!-- Toast -->
 <div id="toast"></div>
 
-<!-- ══════════════════════════════════════════════════════════════════════ -->
-<!--  APP                                                                  -->
-<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════  APP  ═══════════════════ -->
 <div id="app">
 
-  <!-- ── HOME ─────────────────────────────────────────────────────────── -->
-  <div id="pg-home" class="page active">
-    <div class="scroll">
-
-      <div class="topbar">
-        <div class="tb-left">
-          <div class="avatar" id="h-av">Q</div>
-          <div class="tb-name" id="h-name">Hi, User!</div>
-        </div>
-        <div class="tb-brand">Qbit Ad</div>
-      </div>
-
-      <div class="bal-card">
-        <div class="bal-label">Available Balance</div>
-        <div class="bal-amount" id="h-bal">₹0.00</div>
-        <div class="bal-sub">Earn ₹5 per 100 views on every sponsored post</div>
-        <div class="bal-glow"></div><div class="bal-glow2"></div>
-      </div>
-
-      <div class="stats-row">
-        <div class="stat-box">
-          <div class="stat-val" id="h-chs">0</div>
-          <div class="stat-lbl">Channels</div>
-        </div>
-        <div class="stat-div"></div>
-        <div class="stat-box">
-          <div class="stat-val" id="h-earn">₹0</div>
-          <div class="stat-lbl">Total Earned</div>
-        </div>
-        <div class="stat-div"></div>
-        <div class="stat-box">
-          <div class="stat-val" style="color:var(--gold)">₹5</div>
-          <div class="stat-lbl">Per 100 Views</div>
-        </div>
-      </div>
-
-      <div class="sec">
-        <div class="sec-title">Recent Earnings</div>
-        <div id="h-recent"></div>
-      </div>
-
-      <button class="btn btn-outline" onclick="navTo('add')" style="margin-top:0">
-        + Channel Add Karo
-      </button>
-
-    </div>
+<!-- ─── HOME ──────────────────────────────────── -->
+<div id="pg-home" class="page active">
+ <div class="scroll">
+  <div class="hbar">
+   <div class="hbar-brand">
+    <div class="hbar-logo"><i data-lucide="zap"></i></div>
+    <span class="hbar-name">Qbit Ad</span>
+   </div>
+   <div class="hbar-user">
+    <span class="h-uname" id="h-uname">Loading…</span>
+    <div class="h-avatar" id="h-av">Q</div>
+   </div>
   </div>
 
-  <!-- ── CHANNELS ──────────────────────────────────────────────────────── -->
-  <div id="pg-channels" class="page">
-    <div class="scroll">
-      <div class="pg-header">
-        <div class="pg-title">My Channels</div>
-        <button class="add-btn" onclick="navTo('add')">+ Add</button>
-      </div>
-      <div id="ch-list"></div>
-    </div>
+  <!-- Balance Hero -->
+  <div class="bal-hero">
+   <div class="bal-circles"><div class="bc"></div><div class="bc2"></div></div>
+   <div class="bal-live"><div class="ldot"></div>Live</div>
+   <div class="bal-lbl">Available Balance</div>
+   <div class="bal-amt balance-display" id="h-bal">₹0.00</div>
+   <div class="bal-sub">Earn ₹5 per 100 views · Credited in real time</div>
+   <div class="bal-proj"><i data-lucide="trending-up"></i><span id="h-proj">Calculating projection…</span></div>
   </div>
 
-  <!-- ── ADD CHANNEL ───────────────────────────────────────────────────── -->
-  <div id="pg-add" class="page">
-    <div class="scroll">
-      <div class="pg-header">
-        <button class="back-btn" onclick="navTo('channels')">← Back</button>
-        <div class="pg-title">Add Channel</div>
-        <div style="width:60px"></div>
-      </div>
-
-      <!-- Step 1 -->
-      <div id="add-s1">
-        <div class="step-card">
-          <div class="step-badge gold">Step 1 of 3</div>
-          <div class="step-title">Channel Username Daalo</div>
-          <div class="step-desc">Apne Telegram channel ka username daalo jise aap connect karna chahte ho.</div>
-          <input id="ch-inp" class="inp" type="text" placeholder="@yourchannel">
-          <button id="ch-check-btn" class="btn btn-gold" onclick="checkChannel()">Check Channel</button>
-        </div>
-      </div>
-
-      <!-- Step 2: Not admin -->
-      <div id="add-s2" style="display:none">
-        <div class="step-card">
-          <div class="step-badge amber">Step 2 of 3 — Action Required</div>
-          <div class="step-title">Bot ko Admin Banao</div>
-          <div class="pending-box">
-            <div class="pending-icon">📢</div>
-            <div>
-              <div class="pending-name" id="s2-ch-name">Channel Name</div>
-              <div class="pending-user" id="s2-ch-user">@channel</div>
-            </div>
-          </div>
-          <div class="inst-list">
-            <div class="inst-item"><span class="inst-n">1</span><span>Telegram mein apna <b>channel</b> open karo</span></div>
-            <div class="inst-item"><span class="inst-n">2</span><span><b>Channel Settings</b> mein jao</span></div>
-            <div class="inst-item"><span class="inst-n">3</span><span><b>Administrators → Add Administrator</b> par click karo</span></div>
-            <div class="inst-item"><span class="inst-n">4</span><span>Search karo: <b style="color:var(--gold)">@Qbit_Ad_Bot</b></span></div>
-            <div class="inst-item"><span class="inst-n">5</span><span>Enable karo: ✅ <b>Post Messages</b> aur ✅ <b>Invite Users</b></span></div>
-            <div class="inst-item"><span class="inst-n">6</span><span>Neeche <b>Save</b> kar do</span></div>
-          </div>
-          <button id="s2-done-btn" class="btn btn-gold" onclick="recheckChannel()">✅ Maine Admin Banaya — Verify Karo</button>
-        </div>
-      </div>
-
-      <!-- Step 3: Confirm -->
-      <div id="add-s3" style="display:none">
-        <div class="step-card">
-          <div class="step-badge green">Step 3 of 3 — Almost Done!</div>
-          <div class="step-title">Channel Confirm Karo</div>
-          <div class="ch-preview">
-            <div class="prev-av" id="s3-av">C</div>
-            <div>
-              <div class="prev-title" id="s3-title">Channel Name</div>
-              <div class="prev-user" id="s3-user">@channel</div>
-            </div>
-          </div>
-          <div class="prev-stats">
-            <div class="prev-stat">
-              <div class="ps-val" id="s3-subs">—</div>
-              <div class="ps-lbl">Subscribers</div>
-            </div>
-            <div class="prev-stat">
-              <div class="ps-val" id="s3-views">—</div>
-              <div class="ps-lbl">Avg Views</div>
-            </div>
-            <div class="prev-stat gold-stat">
-              <div class="ps-val" id="s3-earn">₹0</div>
-              <div class="ps-lbl">Est. / Post</div>
-            </div>
-          </div>
-          <button id="s3-add-btn" class="btn btn-gold" onclick="confirmAdd()">✅ Channel Add Karo</button>
-        </div>
-      </div>
-
-    </div>
+  <!-- Quick Stats -->
+  <div class="qgrid">
+   <div class="qcard">
+    <div class="qico v"><i data-lucide="radio"></i></div>
+    <div class="qval" id="qs-ch">0</div><div class="qlbl">Active Channels</div>
+   </div>
+   <div class="qcard">
+    <div class="qico g"><i data-lucide="indian-rupee"></i></div>
+    <div class="qval" id="qs-earn">₹0</div><div class="qlbl">Total Earned</div>
+   </div>
+   <div class="qcard">
+    <div class="qico a"><i data-lucide="file-text"></i></div>
+    <div class="qval" id="qs-posts">0</div><div class="qlbl">Sponsored Posts</div>
+   </div>
+   <div class="qcard">
+    <div class="qico pk"><i data-lucide="eye"></i></div>
+    <div class="qval" id="qs-views">0</div><div class="qlbl">Total Views</div>
+   </div>
   </div>
 
-  <!-- ── WALLET ─────────────────────────────────────────────────────────── -->
-  <div id="pg-wallet" class="page">
-    <div class="scroll">
-      <div class="pg-header">
-        <div class="pg-title">Wallet</div>
-      </div>
-      <div class="wal-hero">
-        <div class="bal-label">Wallet Balance</div>
-        <div class="bal-amount" id="w-bal">₹0.00</div>
-        <div class="bal-sub" style="margin-top:6px">Withdraw karo min ₹50</div>
-      </div>
-      <div class="sec">
-        <div class="sec-title">Earning History</div>
-        <div id="w-history"></div>
-      </div>
+  <!-- Earning Chart -->
+  <div class="sec">
+   <div class="sec-hd"><span class="sec-title">Earnings — Last 7 Days</span></div>
+   <div class="chart-wrap">
+    <div class="chart-hd">
+     <span class="chart-title">Daily Earnings</span>
+     <span class="chart-sub" id="chart-total">₹0 this week</span>
     </div>
+    <div style="height:130px;position:relative"><canvas id="earn-chart"></canvas></div>
+   </div>
   </div>
 
-  <!-- ── WITHDRAW ──────────────────────────────────────────────────────── -->
-  <div id="pg-withdraw" class="page">
-    <div class="scroll">
-      <div class="pg-header">
-        <div class="pg-title">Withdraw</div>
-      </div>
-
-      <div class="bal-mini">
-        <div>
-          <div class="bm-label">Available</div>
-          <div class="bm-val" id="wd-bal">₹0.00</div>
-        </div>
-        <div style="font-size:32px">💰</div>
-      </div>
-
-      <div class="card" style="margin-bottom:20px">
-        <div class="inp-group">
-          <label class="inp-label">UPI ID</label>
-          <input id="wd-upi" class="inp" type="text" placeholder="yourname@upi">
-        </div>
-        <div class="inp-group" style="margin-bottom:0">
-          <label class="inp-label">Amount (Min ₹50)</label>
-          <div class="amt-row">
-            <input id="wd-amt" class="inp" type="number" placeholder="Enter amount" min="50">
-            <button class="max-btn" onclick="setMax()">MAX</button>
-          </div>
-        </div>
-        <button id="wd-btn" class="btn btn-gold" onclick="submitWd()">Submit Withdrawal Request</button>
-      </div>
-
-      <div class="sec">
-        <div class="sec-title">Withdrawal History</div>
-        <div id="wd-history"></div>
-      </div>
-    </div>
+  <!-- Recent Activity -->
+  <div class="sec" style="padding-bottom:8px">
+   <div class="sec-hd">
+    <span class="sec-title">Recent Activity</span>
+    <span class="sec-link" onclick="goNav('wallet')">View all</span>
+   </div>
+   <div class="card" style="padding:0 16px"><div id="h-recent"></div></div>
   </div>
+ </div>
+</div>
+
+<!-- ─── CHANNELS ──────────────────────────────── -->
+<div id="pg-channels" class="page">
+ <div class="pgbar">
+  <span class="pgbar-title">My Channels</span>
+  <button class="pgbar-action" onclick="navTo('add')">
+   <i data-lucide="plus-circle"></i>Add Channel
+  </button>
+ </div>
+ <div class="scroll" style="padding-top:12px">
+  <div style="padding:0 16px" id="ch-list"></div>
+ </div>
+</div>
+
+<!-- ─── ADD CHANNEL ──────────────────────────── -->
+<div id="pg-add" class="page">
+ <div class="pgbar">
+  <button class="pgbar-back" onclick="navTo('channels')">
+   <i data-lucide="arrow-left"></i>Back
+  </button>
+  <span class="pgbar-title">Add Channel</span>
+  <div style="width:70px"></div>
+ </div>
+ <div class="scroll" style="padding-top:12px">
+  <div style="padding:0 16px">
+
+   <!-- Step 1 -->
+   <div id="add-s1">
+    <div class="card" style="padding:20px">
+     <div class="step-pill a"><i data-lucide="search"></i>Step 1 of 3</div>
+     <div class="step-h">Enter Channel Username</div>
+     <div class="step-d">Enter your Telegram channel username to get started. Your channel must be public.</div>
+     <div class="ig"><label class="il">Channel Username</label>
+      <input id="ch-inp" class="inp" type="text" placeholder="@yourchannel"></div>
+     <button id="s1-btn" class="btn btn-p" onclick="checkChannel()">Check Channel</button>
+    </div>
+   </div>
+
+   <!-- Step 2 -->
+   <div id="add-s2" style="display:none">
+    <div class="card" style="padding:20px">
+     <div class="step-pill w"><i data-lucide="shield-alert"></i>Step 2 of 3 — Action Required</div>
+     <div class="step-h">Make Bot an Admin</div>
+     <div class="step-d">Add <b>@Qbit_Ad_Bot</b> as an administrator to your channel with the following permissions.</div>
+     <div class="ch-prev-box">
+      <div class="cp-av" id="s2-av">C</div>
+      <div><div class="cp-name" id="s2-name">Channel</div><div class="cp-user" id="s2-user">@channel</div></div>
+     </div>
+     <div class="inst-list">
+      <div class="inst-item"><span class="in">1</span><span>Open your channel in Telegram</span></div>
+      <div class="inst-item"><span class="in">2</span><span>Go to <b>Channel Settings</b></span></div>
+      <div class="inst-item"><span class="in">3</span><span>Tap <b>Administrators → Add Administrator</b></span></div>
+      <div class="inst-item"><span class="in">4</span><span>Search and select <b style="color:var(--p)">@Qbit_Ad_Bot</b></span></div>
+      <div class="inst-item"><span class="in">5</span><span>Enable ✅ <b>Post Messages</b> and ✅ <b>Invite Users</b></span></div>
+      <div class="inst-item"><span class="in">6</span><span>Tap <b>Save</b> to confirm</span></div>
+     </div>
+     <button id="s2-btn" class="btn btn-p" onclick="recheckChannel()">
+      <i data-lucide="check-circle" style="vertical-align:middle;margin-right:5px"></i>I've Added the Bot — Verify Now
+     </button>
+    </div>
+   </div>
+
+   <!-- Step 3 -->
+   <div id="add-s3" style="display:none">
+    <div class="card" style="padding:20px">
+     <div class="step-pill ok"><i data-lucide="check"></i>Step 3 of 3 — Almost Done!</div>
+     <div class="step-h">Confirm Your Channel</div>
+     <div class="step-d">Review your channel stats and confirm to start receiving sponsored posts.</div>
+     <div class="ch-prev-box">
+      <div class="cp-av" id="s3-av">C</div>
+      <div><div class="cp-name" id="s3-name">Channel</div><div class="cp-user" id="s3-user">@channel</div></div>
+     </div>
+     <div class="prev-stats">
+      <div class="ps"><div class="psv" id="s3-subs">—</div><div class="psl">Subscribers</div></div>
+      <div class="ps"><div class="psv" id="s3-views">—</div><div class="psl">Avg Views</div></div>
+      <div class="ps hl"><div class="psv" id="s3-earn">₹0</div><div class="psl">Est. / Post</div></div>
+     </div>
+     <div class="tag g" style="margin-bottom:14px;width:100%;justify-content:center">
+      <i data-lucide="zap"></i>Real-time earnings — credited as views arrive
+     </div>
+     <button id="s3-btn" class="btn btn-p" onclick="confirmAdd()">Add Channel & Start Earning</button>
+    </div>
+   </div>
+
+  </div>
+ </div>
+</div>
+
+<!-- ─── POSTS ─────────────────────────────────── -->
+<div id="pg-posts" class="page">
+ <div class="pgbar">
+  <span class="pgbar-title">Sponsored Posts</span>
+  <span class="tag p" id="posts-count" style="font-size:11px">0 posts</span>
+ </div>
+ <div class="scroll" style="padding-top:12px">
+  <div style="padding:0 16px" id="posts-list"></div>
+ </div>
+</div>
+
+<!-- ─── WALLET ────────────────────────────────── -->
+<div id="pg-wallet" class="page">
+ <div class="pgbar"><span class="pgbar-title">Wallet</span></div>
+ <div class="scroll" style="padding-top:16px">
+  <div class="wal-hero">
+   <div class="wh-lbl">Wallet Balance</div>
+   <div class="wh-bal balance-display" id="w-bal">₹0.00</div>
+   <div class="wh-row">
+    <div class="wh-btn" onclick="goNav('withdraw')">
+     <i data-lucide="arrow-down-circle"></i><span class="wh-btn-lbl">Withdraw</span>
+    </div>
+    <div class="wh-btn">
+     <i data-lucide="clock"></i><span class="wh-btn-lbl" id="w-pending-lbl">Pending ₹0</span>
+    </div>
+    <div class="wh-btn">
+     <i data-lucide="trending-up"></i><span class="wh-btn-lbl" id="w-month-lbl">This Month</span>
+    </div>
+   </div>
+  </div>
+
+  <!-- Chart -->
+  <div style="padding:0 16px">
+   <div class="chart-wrap">
+    <div class="chart-hd">
+     <span class="chart-title">Earnings Trend</span>
+     <span class="chart-sub" id="w-chart-sub">Last 7 days</span>
+    </div>
+    <div style="height:130px;position:relative"><canvas id="wal-chart"></canvas></div>
+   </div>
+  </div>
+
+  <!-- History -->
+  <div class="sec" style="padding-bottom:8px">
+   <div class="sec-hd"><span class="sec-title">Earning History</span></div>
+   <div class="card" style="padding:0 16px"><div id="w-history"></div></div>
+  </div>
+ </div>
+</div>
+
+<!-- ─── WITHDRAW ──────────────────────────────── -->
+<div id="pg-withdraw" class="page">
+ <div class="pgbar"><span class="pgbar-title">Withdraw Funds</span></div>
+ <div class="scroll" style="padding-top:12px">
+  <div style="padding:0 16px">
+   <div class="wd-bal-card" style="margin-bottom:14px">
+    <div><div class="wdb-lbl">Available Balance</div><div class="wdb-val balance-display" id="wd-bal">₹0.00</div></div>
+    <div class="wdb-ico"><i data-lucide="wallet"></i></div>
+   </div>
+   <div class="wd-form" style="margin-bottom:14px">
+    <div class="ig">
+     <label class="il">UPI ID</label>
+     <input id="wd-upi" class="inp" type="text" placeholder="yourname@upi">
+    </div>
+    <div class="ig" style="margin-bottom:16px">
+     <label class="il">Amount (Minimum ₹50)</label>
+     <div class="amt-row">
+      <input id="wd-amt" class="inp" type="number" placeholder="Enter amount" min="50">
+      <button class="max-btn" onclick="setMax()">MAX</button>
+     </div>
+    </div>
+    <div class="tag a" style="margin-bottom:14px;font-size:11px">
+     <i data-lucide="info"></i>Processed within 24 hours after admin approval
+    </div>
+    <button id="wd-btn" class="btn btn-p" onclick="submitWd()">Submit Withdrawal Request</button>
+   </div>
+   <div class="sec-hd" style="padding:0"><span class="sec-title">Withdrawal History</span></div>
+   <div id="wd-history" style="margin-top:10px"></div>
+  </div>
+ </div>
+</div>
 
 </div><!-- /#app -->
 
-<!-- ── Bottom Nav ─────────────────────────────────────────────────────── -->
+<!-- ─── Bottom Nav ─────────────────────────────── -->
 <nav id="nav">
-  <button class="nb active" id="nb-home"     onclick="goNav('home')">
-    <span class="nb-ico">🏠</span><span class="nb-lbl">Home</span>
-  </button>
-  <button class="nb"        id="nb-channels" onclick="goNav('channels')">
-    <span class="nb-ico">📢</span><span class="nb-lbl">Channels</span>
-  </button>
-  <button class="nb"        id="nb-wallet"   onclick="goNav('wallet')">
-    <span class="nb-ico">💰</span><span class="nb-lbl">Wallet</span>
-  </button>
-  <button class="nb"        id="nb-withdraw" onclick="goNav('withdraw')">
-    <span class="nb-ico">🏧</span><span class="nb-lbl">Withdraw</span>
-  </button>
+ <button class="nb active" id="nb-home"     onclick="goNav('home')">
+  <i data-lucide="home"></i><span class="nb-lbl">Home</span>
+ </button>
+ <button class="nb" id="nb-channels" onclick="goNav('channels')">
+  <i data-lucide="radio"></i><span class="nb-lbl">Channels</span>
+ </button>
+ <button class="nb" id="nb-posts" onclick="goNav('posts')">
+  <i data-lucide="layout"></i><span class="nb-lbl">Posts</span>
+ </button>
+ <button class="nb" id="nb-wallet" onclick="goNav('wallet')">
+  <i data-lucide="wallet"></i>
+  <div class="nb-dot" id="earn-dot"></div>
+  <span class="nb-lbl">Wallet</span>
+ </button>
+ <button class="nb" id="nb-withdraw" onclick="goNav('withdraw')">
+  <i data-lucide="arrow-down-circle"></i><span class="nb-lbl">Withdraw</span>
+ </button>
 </nav>
 
-<!-- ══════════════════════════════════════════════════════════════════════ -->
-<!--  SCRIPT                                                               -->
-<!-- ══════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════  SCRIPT  ═══════════════════ -->
 <script>
-/* ── Firebase config ───────────────────────────────────────────────────── */
-const FB_CFG = {
-  apiKey           : "AIzaSyAxKOihbtU8suTCQYaH0yu7tpbcFoop8RU",
-  authDomain       : "cyber-attack-c5414.firebaseapp.com",
-  databaseURL      : "https://cyber-attack-c5414-default-rtdb.firebaseio.com",
-  projectId        : "cyber-attack-c5414",
-  storageBucket    : "cyber-attack-c5414.firebasestorage.app",
-  messagingSenderId: "615101021676",
-  appId            : "1:615101021676:web:ffe86a9a13418b2b8c54c9"
+/* ── Firebase Config ─────────────────────────────────────────────────── */
+const FB = {
+  apiKey:"AIzaSyAxKOihbtU8suTCQYaH0yu7tpbcFoop8RU",
+  authDomain:"cyber-attack-c5414.firebaseapp.com",
+  databaseURL:"https://cyber-attack-c5414-default-rtdb.firebaseio.com",
+  projectId:"cyber-attack-c5414",
+  storageBucket:"cyber-attack-c5414.firebasestorage.app",
+  messagingSenderId:"615101021676",
+  appId:"1:615101021676:web:ffe86a9a13418b2b8c54c9"
 };
 
-/* ── State ──────────────────────────────────────────────────────────────── */
-let uid   = null;
-let uname = "User";
-let bal   = 0;
+/* ── State ───────────────────────────────────────────────────────────── */
+let uid="", uname="User", bal=0, prevBal=0;
+let userChKeys=[];
+let pendingCh=null, addUname="";
+let curPage="home", unreadEarns=0;
+let homeChart=null, walChart=null;
 let db;
-let pendingCh   = null;   // channel data during add flow
-let addUsername = "";     // username being checked
-let curNav      = "home"; // current bottom-nav tab
 
-/* ── Telegram WebApp ────────────────────────────────────────────────────── */
-const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
+/* ── Telegram WebApp ──────────────────────────────────────────────────── */
+const TG = window.Telegram?.WebApp;
+if(TG){ TG.ready(); TG.expand(); }
 
-/* ── Init ───────────────────────────────────────────────────────────────── */
-window.addEventListener("DOMContentLoaded", async () => {
-  // Get Telegram user
-  const tgUser = tg?.initDataUnsafe?.user;
-  if (tgUser) {
-    uid   = String(tgUser.id);
-    uname = tgUser.first_name || "User";
-  } else {
-    // Dev fallback
-    uid   = "000000001";
-    uname = "Developer";
-  }
+/* ── Init ─────────────────────────────────────────────────────────────── */
+window.addEventListener("DOMContentLoaded", async()=>{
+  const u = TG?.initDataUnsafe?.user;
+  uid   = String(u?.id || "999999");
+  uname = u?.first_name || "Developer";
 
-  // Init Firebase
-  firebase.initializeApp(FB_CFG);
+  firebase.initializeApp(FB);
   db = firebase.database();
 
-  // Ensure user record exists
   await ensureUser();
-
-  // Load home data
+  setupRealtimeListeners();
   await loadHome();
 
-  // Show app
-  document.getElementById("loading").style.display = "none";
-  const app = document.getElementById("app");
-  app.style.display = "flex";
+  document.getElementById("ld").style.display="none";
+  const app=document.getElementById("app");
+  app.style.display="flex";
+  icons();
 });
 
-/* ── User helpers ───────────────────────────────────────────────────────── */
-async function ensureUser() {
-  const snap = await db.ref(`users/${uid}`).get();
-  if (!snap.exists()) {
-    await db.ref(`users/${uid}`).set({
-      name          : uname,
-      wallet_balance: 0,
-      joined_at     : Date.now()
-    });
-    bal = 0;
+/* ── User ─────────────────────────────────────────────────────────────── */
+async function ensureUser(){
+  const s=await db.ref(`users/${uid}`).get();
+  if(!s.exists()){
+    await db.ref(`users/${uid}`).set({name:uname,wallet_balance:0,joined_at:Date.now()});
+    bal=0;
   } else {
-    const d = snap.val();
-    bal   = d.wallet_balance || 0;
-    uname = d.name || uname;
+    const d=s.val(); bal=d.wallet_balance||0; uname=d.name||uname;
   }
 }
 
-/* ── Navigation ─────────────────────────────────────────────────────────── */
-// Main bottom-nav switch
-function goNav(page) {
-  curNav = page;
+/* ── Realtime Listeners ───────────────────────────────────────────────── */
+function setupRealtimeListeners(){
+  // Wallet balance — live update everywhere
+  db.ref(`users/${uid}/wallet_balance`).on("value", snap=>{
+    const nb = snap.val()||0;
+    const increased = nb > bal && bal >= 0;
+    const diff = parseFloat((nb-bal).toFixed(2));
+    bal=nb; prevBal=nb;
+    updateAllBalances(increased);
+    if(increased && diff>0 && curPage!=="wallet"){
+      toast(`+₹${diff.toFixed(2)} credited! 🎉`,"s");
+      unreadEarns++;
+      document.getElementById("earn-dot").classList.add("show");
+    }
+  });
 
-  // Pages driven by nav
-  const pages = ["home","channels","wallet","withdraw"];
-  pages.forEach(p => {
-    document.getElementById(`pg-${p}`).classList.toggle("active", p === page);
+  // Earnings listener — update stats
+  db.ref(`earnings/${uid}`).on("value", ()=>{
+    if(curPage==="home")    loadHomeStats();
+    if(curPage==="wallet")  loadWalletData();
+    if(curPage==="posts")   loadPosts();
+  });
+}
+
+function updateAllBalances(animate=false){
+  document.querySelectorAll(".balance-display").forEach(el=>{
+    el.textContent=fmtRs(bal);
+    if(animate){ el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+  });
+}
+
+/* ── Navigation ───────────────────────────────────────────────────────── */
+function goNav(pg){
+  curPage=pg;
+  const pages=["home","channels","posts","wallet","withdraw"];
+  pages.forEach(p=>{
+    document.getElementById(`pg-${p}`).classList.toggle("active",p===pg);
+    document.getElementById(`nb-${p}`).classList.toggle("active",p===pg);
   });
   document.getElementById("pg-add").classList.remove("active");
-
-  // Nav highlight
-  pages.forEach(p => {
-    document.getElementById(`nb-${p}`).classList.toggle("active", p === page);
-  });
-
-  // Load data
-  if (page === "home")     loadHome();
-  if (page === "channels") loadChannels();
-  if (page === "wallet")   loadWallet();
-  if (page === "withdraw") loadWithdraw();
+  if(pg==="wallet"){ unreadEarns=0; document.getElementById("earn-dot").classList.remove("show"); }
+  loadPage(pg); icons();
 }
-
-// Sub-page (no nav change)
-function navTo(sub) {
-  const all = ["home","channels","wallet","withdraw","add"];
-  all.forEach(p => document.getElementById(`pg-${p}`).classList.remove("active"));
+function navTo(sub){
+  ["home","channels","add","posts","wallet","withdraw"].forEach(p=>
+    document.getElementById(`pg-${p}`).classList.remove("active"));
   document.getElementById(`pg-${sub}`).classList.add("active");
-
-  if (sub === "add") resetAddFlow();
-  if (sub === "channels") { loadChannels(); highlightNav("channels"); }
+  if(sub==="add") resetAdd();
+  if(sub==="channels"){ ["home","channels","posts","wallet","withdraw"].forEach(p=>
+    document.getElementById(`nb-${p}`).classList.toggle("active",p==="channels")); loadChannels(); }
+  icons();
+}
+async function loadPage(pg){
+  if(pg==="home")     await loadHome();
+  if(pg==="channels") await loadChannels();
+  if(pg==="posts")    await loadPosts();
+  if(pg==="wallet")   await loadWalletData();
+  if(pg==="withdraw") await loadWithdraw();
 }
 
-function highlightNav(page) {
-  ["home","channels","wallet","withdraw"].forEach(p =>
-    document.getElementById(`nb-${p}`).classList.toggle("active", p === page)
-  );
+/* ── HOME ─────────────────────────────────────────────────────────────── */
+async function loadHome(){
+  document.getElementById("h-av").textContent    = uname.charAt(0).toUpperCase();
+  document.getElementById("h-uname").textContent = uname;
+  updateAllBalances();
+  await loadHomeStats();
 }
 
-/* ── HOME ───────────────────────────────────────────────────────────────── */
-async function loadHome() {
-  // Refresh balance
-  const snap = await db.ref(`users/${uid}`).get();
-  const d    = snap.val() || {};
-  bal = d.wallet_balance || 0;
+async function loadHomeStats(){
+  // Channel count + user channel keys
+  const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
+  const chs = cs.val()||{};
+  userChKeys = Object.keys(chs);
+  document.getElementById("qs-ch").textContent = userChKeys.length;
 
-  document.getElementById("h-av").textContent   = uname.charAt(0).toUpperCase();
-  document.getElementById("h-name").textContent = `Hi, ${uname}!`;
-  document.getElementById("h-bal").textContent  = fmtRs(bal);
+  // Earnings
+  const es   = await db.ref(`earnings/${uid}`).get();
+  const earns = Object.values(es.val()||{});
+  const total = earns.reduce((s,e)=>s+(e.amount||0),0);
+  document.getElementById("qs-earn").textContent = fmtRs(total);
 
-  // Channel count
-  const chSnap = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
-  const chs    = chSnap.val() || {};
-  document.getElementById("h-chs").textContent = Object.keys(chs).length;
-
-  // Earnings summary
-  const eSnap  = await db.ref(`earnings/${uid}`).get();
-  const earns  = Object.values(eSnap.val() || {});
-  const total  = earns.reduce((s, e) => s + (e.amount || 0), 0);
-  document.getElementById("h-earn").textContent = fmtRs(total);
-
-  // Recent (last 3)
-  const recent  = earns.sort((a,b) => b.earned_at - a.earned_at).slice(0, 3);
-  const el      = document.getElementById("h-recent");
-  if (!recent.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-ico">📭</div>
-      <p>Abhi tak koi earning nahi</p>
-      <p class="esub">Channel add karo aur sponsored posts ka wait karo</p></div>`;
-    return;
+  // Sponsored posts + total views
+  const ps  = await db.ref("sponsored_posts").get();
+  const all = ps.val()||{};
+  let postCount=0, viewCount=0;
+  for(const [,pdata] of Object.entries(all)){
+    for(const [chk, ci] of Object.entries(pdata.channels||{})){
+      if(userChKeys.includes(chk)){ postCount++; viewCount+=ci.views||0; break; }
+    }
   }
-  el.innerHTML = recent.map(e => `
-    <div class="list-item">
-      <div class="li-left">
-        <div class="li-icon">📢</div>
-        <div>
-          <div class="li-title">${esc(e.channel_title || e.channel_key || "Channel")}</div>
-          <div class="li-sub">${fmtN(e.views)} views • ${fmtDate(e.earned_at)}</div>
+  document.getElementById("qs-posts").textContent = postCount;
+  document.getElementById("qs-views").textContent = fmtN(viewCount);
+
+  // Monthly projection (avg views × ₹5/100 × est 10 posts/month)
+  const avgViews = Object.values(chs).reduce((s,c)=>s+(c.avg_views||0),0);
+  const proj = parseFloat(((avgViews/100)*5*10).toFixed(2));
+  document.getElementById("h-proj").textContent =
+    proj>0 ? `Est. ₹${proj}/month based on your channels` : "Add a channel to see your projection";
+
+  // Chart
+  renderChart("earn-chart", earns, val=>{ document.getElementById("chart-total").textContent=`₹${val} this week`; });
+
+  // Recent activity
+  const recent = earns.sort((a,b)=>b.earned_at-a.earned_at).slice(0,5);
+  const el=document.getElementById("h-recent");
+  if(!recent.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="inbox"></i></div>
+      <div class="empty-title">No earnings yet</div>
+      <div class="empty-desc">Add a channel and wait for the first sponsored post to arrive.</div></div>`;
+  } else {
+    el.innerHTML=recent.map(e=>`
+      <div class="li">
+        <div class="li-l">
+          <div class="li-ico earn"><i data-lucide="trending-up"></i></div>
+          <div>
+            <div class="li-title">${esc(e.channel_title||e.channel_key||"Sponsored Post")}</div>
+            <div class="li-sub">${fmtN(e.views)} views · ${fmtDate(e.earned_at)}</div>
+          </div>
         </div>
-      </div>
-      <div class="li-amt">+${fmtRs(e.amount)}</div>
-    </div>`).join("");
+        <div class="li-amt">+${fmtRs(e.amount)}</div>
+      </div>`).join("");
+  }
+  icons();
 }
 
-/* ── CHANNELS ───────────────────────────────────────────────────────────── */
-async function loadChannels() {
-  const el = document.getElementById("ch-list");
-  el.innerHTML = `<div class="empty"><div class="ld-ring" style="margin:0 auto"></div></div>`;
-
-  const snap = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
-  const chs  = snap.val() || {};
-  const list = Object.entries(chs);
-
-  if (!list.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-ico">📡</div>
-      <p>Koi channel add nahi kiya</p>
-      <p class="esub">Upar "+ Add" button dabao</p></div>`;
-    return;
+/* ── CHANNELS ─────────────────────────────────────────────────────────── */
+async function loadChannels(){
+  const el=document.getElementById("ch-list");
+  el.innerHTML=`<div class="sk sk-card"></div><div class="sk sk-card"></div>`;
+  const s = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
+  const chs = Object.entries(s.val()||{});
+  if(!chs.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="radio"></i></div>
+      <div class="empty-title">No channels added</div>
+      <div class="empty-desc">Add your Telegram channel to start receiving sponsored posts and earning money.</div>
+      <button class="btn btn-p" style="margin-top:16px;max-width:220px" onclick="navTo('add')">Add Your First Channel</button></div>`;
+    icons(); return;
   }
-
-  el.innerHTML = list.map(([key, ch]) => {
-    const est = ((ch.avg_views || 0) / 100 * 5).toFixed(2);
-    return `
-    <div class="ch-card">
-      <div class="ch-head">
-        <div class="ch-av">${(ch.title||"C").charAt(0).toUpperCase()}</div>
-        <div class="ch-info">
-          <div class="ch-name">${esc(ch.title || ch.username)}</div>
-          <div class="ch-user">${esc(ch.username)}</div>
+  el.innerHTML=chs.map(([key,ch])=>{
+    const health  = Math.min(Math.round((ch.avg_views/(ch.subscribers||1))*100),100);
+    const est     = ((ch.avg_views||0)/100*5).toFixed(2);
+    const typeIco = health>=20?"trending-up":health>=10?"minus":"trending-down";
+    return `<div class="ch-card">
+      <div class="ch-inner">
+        <div class="ch-hd">
+          <div class="ch-av">${(ch.title||"C").charAt(0).toUpperCase()}</div>
+          <div class="ch-inf">
+            <div class="ch-nm">${esc(ch.title||ch.username)}</div>
+            <div class="ch-un">${esc(ch.username)}</div>
+          </div>
+          <span class="badge ${ch.active?"on":"off"}">${ch.active?"Active":"Inactive"}</span>
         </div>
-        <div class="ch-badge ${ch.active ? "active":"inactive"}">${ch.active?"Active":"Inactive"}</div>
       </div>
       <div class="ch-stats">
-        <div class="ch-s"><div class="ch-s-val">${fmtN(ch.subscribers)}</div><div class="ch-s-lbl">Subscribers</div></div>
-        <div class="ch-s"><div class="ch-s-val">${fmtN(ch.avg_views)}</div><div class="ch-s-lbl">Avg Views</div></div>
-        <div class="ch-s"><div class="ch-s-val" style="color:var(--gold)">₹${est}</div><div class="ch-s-lbl">Est./Post</div></div>
+        <div class="cs"><div class="csv">${fmtN(ch.subscribers)}</div><div class="csl">Subscribers</div></div>
+        <div class="cs"><div class="csv">${fmtN(ch.avg_views)}</div><div class="csl">Avg Views</div></div>
+        <div class="cs"><div class="csv" style="color:var(--green)">₹${est}</div><div class="csl">Est./Post</div></div>
+      </div>
+      <div class="health">
+        <div class="health-hd">
+          <span class="health-lbl"><i data-lucide="activity"></i>Channel Health Score</span>
+          <span class="health-val">${health}%</span>
+        </div>
+        <div class="hbar-bg"><div class="hbar-fill" style="width:${health}%"></div></div>
+      </div>
+      <div class="est-tag">
+        <span class="est-lbl"><i data-lucide="zap"></i>Estimated earnings per post</span>
+        <span class="est-val">₹${est}</span>
       </div>
     </div>`;
   }).join("");
+  icons();
 }
 
-/* ── ADD CHANNEL FLOW ───────────────────────────────────────────────────── */
-function resetAddFlow() {
-  pendingCh   = null;
-  addUsername = "";
-  document.getElementById("ch-inp").value = "";
-  document.getElementById("add-s1").style.display = "block";
-  document.getElementById("add-s2").style.display = "none";
-  document.getElementById("add-s3").style.display = "none";
-  setBtn("ch-check-btn", "Check Channel", false);
+/* ── ADD CHANNEL ──────────────────────────────────────────────────────── */
+function resetAdd(){
+  pendingCh=null; addUname="";
+  document.getElementById("ch-inp").value="";
+  document.getElementById("add-s1").style.display="block";
+  document.getElementById("add-s2").style.display="none";
+  document.getElementById("add-s3").style.display="none";
+  setBtnText("s1-btn","Check Channel",false);
 }
 
-async function checkChannel() {
-  const raw = document.getElementById("ch-inp").value.trim();
-  if (!raw) { toast("Channel username daalo", "error"); return; }
-  addUsername = raw.startsWith("@") ? raw : "@" + raw;
-  await _doVerify("ch-check-btn");
+async function checkChannel(){
+  const raw=document.getElementById("ch-inp").value.trim();
+  if(!raw){ toast("Enter channel username","e"); return; }
+  addUname=raw.startsWith("@")?raw:"@"+raw;
+  await _verify("s1-btn");
 }
+async function recheckChannel(){ await _verify("s2-btn"); }
 
-async function recheckChannel() {
-  await _doVerify("s2-done-btn");
-}
-
-async function _doVerify(btnId) {
-  setBtn(btnId, "Checking…", true);
-  try {
-    const res  = await fetch("/api/verify_channel", {
-      method : "POST",
-      headers: { "Content-Type": "application/json" },
-      body   : JSON.stringify({ channel: addUsername })
+async function _verify(btnId){
+  setBtnText(btnId,"Verifying…",true);
+  try{
+    const r = await fetch("/api/verify_channel",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({channel:addUname})
     });
-    const data = await res.json();
-    setBtn(btnId, btnId === "ch-check-btn" ? "Check Channel" : "✅ Maine Admin Banaya — Verify Karo", false);
-
-    if (data.ok) {
-      pendingCh = data;
-      showStep(3);
-    } else if (data.error === "bot_not_admin") {
-      pendingCh = data;
-      document.getElementById("s2-ch-name").textContent = data.title || addUsername;
-      document.getElementById("s2-ch-user").textContent = "@" + (data.username || addUsername.replace("@",""));
+    const d=await r.json();
+    setBtnText(btnId, btnId==="s1-btn"?"Check Channel":"I've Added the Bot — Verify Now", false);
+    if(d.ok){
+      pendingCh=d; showStep(3);
+    } else if(d.error==="bot_not_admin"){
+      pendingCh=d;
+      document.getElementById("s2-av").textContent=(d.title||"C").charAt(0).toUpperCase();
+      document.getElementById("s2-name").textContent=d.title||addUname;
+      document.getElementById("s2-user").textContent="@"+(d.username||addUname.replace("@",""));
       showStep(2);
-    } else {
-      toast(data.error || "Kuch galat hua, dobara try karo", "error");
-    }
-  } catch(e) {
-    setBtn(btnId, btnId === "ch-check-btn" ? "Check Channel" : "✅ Maine Admin Banaya — Verify Karo", false);
-    toast("Network error. Internet check karo.", "error");
+    } else { toast(d.error||"Verification failed","e"); }
+  } catch{
+    setBtnText(btnId, btnId==="s1-btn"?"Check Channel":"I've Added the Bot — Verify Now", false);
+    toast("Network error. Please try again.","e");
   }
+  icons();
 }
 
-function showStep(n) {
-  document.getElementById("add-s1").style.display = n===1 ? "block":"none";
-  document.getElementById("add-s2").style.display = n===2 ? "block":"none";
-  document.getElementById("add-s3").style.display = n===3 ? "block":"none";
-
-  if (n===3 && pendingCh) {
-    const av = (pendingCh.title||"C").charAt(0).toUpperCase();
-    document.getElementById("s3-av").textContent    = av;
-    document.getElementById("s3-title").textContent = pendingCh.title || addUsername;
-    document.getElementById("s3-user").textContent  = "@" + (pendingCh.username || addUsername.replace("@",""));
-    document.getElementById("s3-subs").textContent  = fmtN(pendingCh.subscribers);
-    document.getElementById("s3-views").textContent = fmtN(pendingCh.avg_views);
-    document.getElementById("s3-earn").textContent  = "₹" + (pendingCh.est_earnings||0).toFixed(2);
+function showStep(n){
+  document.getElementById("add-s1").style.display=n===1?"block":"none";
+  document.getElementById("add-s2").style.display=n===2?"block":"none";
+  document.getElementById("add-s3").style.display=n===3?"block":"none";
+  if(n===3&&pendingCh){
+    document.getElementById("s3-av").textContent=(pendingCh.title||"C").charAt(0).toUpperCase();
+    document.getElementById("s3-name").textContent=pendingCh.title||addUname;
+    document.getElementById("s3-user").textContent="@"+(pendingCh.username||addUname.replace("@",""));
+    document.getElementById("s3-subs").textContent=fmtN(pendingCh.subscribers);
+    document.getElementById("s3-views").textContent=fmtN(pendingCh.avg_views);
+    document.getElementById("s3-earn").textContent="₹"+(pendingCh.est_earnings||0).toFixed(2);
   }
+  icons();
 }
 
-async function confirmAdd() {
-  if (!pendingCh) return;
-  setBtn("s3-add-btn","Adding…",true);
-
-  const uname2 = (pendingCh.username || addUsername.replace("@","")).toLowerCase();
-  const key    = uname2.replace(/[^a-z0-9_]/g,"_");
-
-  // Check if already registered by someone else
-  const ex = await db.ref(`channels/${key}`).get();
-  if (ex.exists() && ex.val().owner_id !== uid) {
-    setBtn("s3-add-btn","✅ Channel Add Karo",false);
-    toast("Ye channel pehle se kisi aur ne add kiya hua hai", "error");
-    return;
+async function confirmAdd(){
+  if(!pendingCh) return;
+  setBtnText("s3-btn","Adding…",true);
+  const un  = (pendingCh.username||addUname.replace("@","")).toLowerCase();
+  const key = un.replace(/[^a-z0-9_]/g,"_");
+  const ex  = await db.ref(`channels/${key}`).get();
+  if(ex.exists()&&ex.val().owner_id!==uid){
+    setBtnText("s3-btn","Add Channel & Start Earning",false);
+    toast("This channel is already registered by another user","e"); return;
   }
-
   await db.ref(`channels/${key}`).set({
-    owner_id   : uid,
-    username   : "@" + uname2,
-    chat_id    : pendingCh.chat_id,
-    title      : pendingCh.title || addUsername,
-    subscribers: pendingCh.subscribers  || 0,
-    avg_views  : pendingCh.avg_views    || 0,
-    active     : true,
-    added_at   : Date.now()
+    owner_id:uid, username:"@"+un, chat_id:pendingCh.chat_id,
+    title:pendingCh.title||addUname, subscribers:pendingCh.subscribers||0,
+    avg_views:pendingCh.avg_views||0, active:true, added_at:Date.now()
   });
-
-  pendingCh = null;
-  toast("Channel successfully add ho gaya! 🎉","success");
+  pendingCh=null;
+  toast("Channel added successfully! 🎉","s");
   navTo("channels");
 }
 
-/* ── WALLET ─────────────────────────────────────────────────────────────── */
-async function loadWallet() {
-  const snap = await db.ref(`users/${uid}`).get();
-  bal = (snap.val()||{}).wallet_balance || 0;
-  document.getElementById("w-bal").textContent = fmtRs(bal);
+/* ── POSTS ────────────────────────────────────────────────────────────── */
+async function loadPosts(){
+  const el=document.getElementById("posts-list");
+  el.innerHTML=`<div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div>`;
 
-  const eSnap  = await db.ref(`earnings/${uid}`).get();
-  const earns  = Object.values(eSnap.val()||{}).sort((a,b)=>b.earned_at-a.earned_at);
-  const el     = document.getElementById("w-history");
+  // Refresh user channel keys
+  const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
+  userChKeys = Object.keys(cs.val()||{});
 
-  if (!earns.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-ico">💸</div>
-      <p>Koi earning record nahi abhi tak</p></div>`;
-    return;
+  if(!userChKeys.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
+      <div class="empty-title">No sponsored posts yet</div>
+      <div class="empty-desc">Add a channel first. Sponsored posts will appear here as they are forwarded to your channels.</div></div>`;
+    document.getElementById("posts-count").textContent="0 posts";
+    icons(); return;
   }
-  el.innerHTML = earns.map(e => `
-    <div class="list-item">
-      <div class="li-left">
-        <div class="li-icon">📢</div>
+
+  // Listen realtime
+  db.ref("sponsored_posts").on("value", snap=>{
+    const all=snap.val()||{};
+    const myPosts=[];
+    for(const [pid,pdata] of Object.entries(all)){
+      for(const [chk,ci] of Object.entries(pdata.channels||{})){
+        if(userChKeys.includes(chk)){
+          myPosts.push({pid, chKey:chk, chInfo:ci, ...pdata}); break;
+        }
+      }
+    }
+    myPosts.sort((a,b)=>b.sent_at-a.sent_at);
+    document.getElementById("posts-count").textContent=`${myPosts.length} post${myPosts.length!==1?"s":""}`;
+
+    if(!myPosts.length){
+      el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
+        <div class="empty-title">No sponsored posts yet</div>
+        <div class="empty-desc">Posts forwarded to your channels will appear here with real-time view tracking.</div></div>`;
+      icons(); return;
+    }
+
+    el.innerHTML=myPosts.map(p=>{
+      const views   = p.chInfo?.views||0;
+      const prog    = (views%100)/100*100;
+      const earned  = Math.floor(views/100)*5;
+      const nextAt  = (Math.floor(views/100)+1)*100;
+      const typeIco = p.post_type==="photo"?"image" : p.post_type==="video"?"video" : "file-text";
+      const cap     = p.caption ? esc(p.caption) : "<em style='color:var(--t3)'>No caption</em>";
+      return `<div class="post-card">
+        <div class="post-top">
+          <div class="post-pill"><i data-lucide="${typeIco}"></i>Sponsored</div>
+          <span class="post-ts">${fmtDateTime(p.sent_at)}</span>
+        </div>
+        <div class="post-caption"><div class="post-caption-inner">${cap}</div></div>
+        <div class="post-meta">
+          <div class="pm"><i data-lucide="eye"></i><span class="pm-val">${fmtN(views)}</span><span class="pm-lbl">Views</span></div>
+          <div class="pm"><i data-lucide="indian-rupee"></i><span class="pm-val" style="color:var(--green)">₹${earned}</span><span class="pm-lbl">Earned</span></div>
+          <div class="pm"><i data-lucide="radio"></i><span class="pm-val">${esc(p.chKey)}</span></div>
+        </div>
+        <div class="vp">
+          <div class="vp-hd">
+            <span class="vp-cur">${views} views so far</span>
+            <span class="vp-nxt">Next ₹5 at ${nextAt} views</span>
+          </div>
+          <div class="vp-bg"><div class="vp-fill" style="width:${prog}%"></div></div>
+          <div class="vp-earn">
+            <span class="vp-earn-lbl">${p.chInfo?.paid?"✅ Final settlement done":"⏱ Earning in real time"}</span>
+            <span class="vp-earn-val">Total earned: ₹${earned}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+    icons();
+  });
+}
+
+/* ── WALLET ───────────────────────────────────────────────────────────── */
+async function loadWalletData(){
+  updateAllBalances();
+  const es   = await db.ref(`earnings/${uid}`).get();
+  const earns = Object.values(es.val()||{}).sort((a,b)=>b.earned_at-a.earned_at);
+  const total = earns.reduce((s,e)=>s+(e.amount||0),0);
+
+  // This month
+  const now=new Date(), mStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const monthEarn = earns.filter(e=>e.earned_at>=mStart).reduce((s,e)=>s+(e.amount||0),0);
+  document.getElementById("w-month-lbl").textContent=`₹${monthEarn.toFixed(2)} Month`;
+
+  // Pending withdrawals
+  const ws = await db.ref("withdrawals").orderByChild("user_id").equalTo(uid).get();
+  const pend = Object.values(ws.val()||{}).filter(w=>w.status==="pending").reduce((s,w)=>s+w.amount,0);
+  document.getElementById("w-pending-lbl").textContent=`Pending ₹${pend.toFixed(2)}`;
+
+  // Chart
+  renderChart("wal-chart", earns, val=>{ document.getElementById("w-chart-sub").textContent=`₹${val} this week`; });
+
+  // History
+  const el=document.getElementById("w-history");
+  if(!earns.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="inbox"></i></div>
+      <div class="empty-title">No earnings yet</div>
+      <div class="empty-desc">Your earnings history will appear here once sponsored posts receive views.</div></div>`;
+    icons(); return;
+  }
+  el.innerHTML=`<div class="card" style="padding:0 16px">` +
+    earns.map(e=>`
+    <div class="li">
+      <div class="li-l">
+        <div class="li-ico earn"><i data-lucide="trending-up"></i></div>
         <div>
           <div class="li-title">${esc(e.channel_title||e.channel_key||"Sponsored Post")}</div>
-          <div class="li-sub">${fmtN(e.views)} views • ${fmtDate(e.earned_at)}</div>
+          <div class="li-sub">${fmtN(e.views)} views · ${fmtDate(e.earned_at)}</div>
         </div>
       </div>
       <div class="li-amt">+${fmtRs(e.amount)}</div>
-    </div>`).join("");
+    </div>`).join("")+`</div>`;
+  icons();
 }
 
-/* ── WITHDRAW ───────────────────────────────────────────────────────────── */
-async function loadWithdraw() {
-  const snap = await db.ref(`users/${uid}`).get();
-  bal = (snap.val()||{}).wallet_balance || 0;
-  document.getElementById("wd-bal").textContent = fmtRs(bal);
-
-  const wSnap = await db.ref("withdrawals").orderByChild("user_id").equalTo(uid).get();
-  const wds   = Object.values(wSnap.val()||{}).sort((a,b)=>b.requested_at-a.requested_at);
-  const el    = document.getElementById("wd-history");
-
-  if (!wds.length) {
-    el.innerHTML = `<div class="empty" style="padding:28px 0">
-      <div class="empty-ico">📋</div><p>Koi withdrawal request nahi</p></div>`;
-    return;
+/* ── WITHDRAW ─────────────────────────────────────────────────────────── */
+async function loadWithdraw(){
+  updateAllBalances();
+  const ws  = await db.ref("withdrawals").orderByChild("user_id").equalTo(uid).get();
+  const wds = Object.values(ws.val()||{}).sort((a,b)=>b.requested_at-a.requested_at);
+  const el  = document.getElementById("wd-history");
+  if(!wds.length){
+    el.innerHTML=`<div class="empty" style="padding:30px 0">
+      <div class="empty-ico"><i data-lucide="file-text"></i></div>
+      <div class="empty-title">No withdrawal requests</div>
+      <div class="empty-desc">Your requests will appear here once submitted.</div></div>`;
+    icons(); return;
   }
-  el.innerHTML = wds.map(w => `
+  el.innerHTML=wds.map(w=>`
     <div class="wd-item">
-      <div class="wd-left">
-        <div class="wd-upi">${esc(w.upi_id)}</div>
-        <div class="wd-date">${fmtDate(w.requested_at)}</div>
+      <div class="wdi-l">
+        <div class="wdi-upi">${esc(w.upi_id)}</div>
+        <div class="wdi-date">${fmtDate(w.requested_at)}</div>
       </div>
-      <div class="wd-right">
-        <div class="wd-amt">${fmtRs(w.amount)}</div>
-        <div class="wd-status ${w.status}">${
-          w.status==="pending"  ? "⏳ Pending" :
-          w.status==="paid"     ? "✅ Paid"    : "❌ Rejected"
+      <div class="wdi-r">
+        <div class="wdi-amt">${fmtRs(w.amount)}</div>
+        <div class="wdi-status ${w.status}">${
+          w.status==="pending"?"⏳ Pending":w.status==="paid"?"✅ Paid":"❌ Rejected"
         }</div>
       </div>
     </div>`).join("");
+  icons();
 }
+function setMax(){ document.getElementById("wd-amt").value=Math.floor(bal); }
 
-function setMax() {
-  document.getElementById("wd-amt").value = Math.floor(bal);
-}
-
-async function submitWd() {
-  const upi    = document.getElementById("wd-upi").value.trim();
-  const amount = parseFloat(document.getElementById("wd-amt").value);
-
-  if (!upi)              { toast("UPI ID daalo (e.g. name@upi)","error"); return; }
-  if (!upi.includes("@")){ toast("Valid UPI ID daalo (e.g. name@upi)","error"); return; }
-  if (!amount||amount<50){ toast("Minimum withdrawal ₹50 hai","error"); return; }
-  if (amount>bal)        { toast("Insufficient balance","error"); return; }
-
-  setBtn("wd-btn","Submitting…",true);
-
-  const reqId = `req_${uid}_${Date.now()}`;
-  await db.ref(`withdrawals/${reqId}`).set({
-    user_id     : uid,
-    upi_id      : upi,
-    amount      : amount,
-    status      : "pending",
-    requested_at: Date.now()
-  });
-
-  // Deduct from wallet (reversal happens if admin rejects)
-  const newBal = Math.max(0, parseFloat((bal - amount).toFixed(2)));
-  await db.ref(`users/${uid}`).update({ wallet_balance: newBal });
-  bal = newBal;
-
-  document.getElementById("wd-upi").value = "";
-  document.getElementById("wd-amt").value = "";
-  setBtn("wd-btn","Submit Withdrawal Request",false);
-
-  toast("Withdrawal request submit ho gaya! ✅","success");
+async function submitWd(){
+  const upi=document.getElementById("wd-upi").value.trim();
+  const amt=parseFloat(document.getElementById("wd-amt").value);
+  if(!upi||!upi.includes("@")){ toast("Enter a valid UPI ID (e.g. name@upi)","e"); return; }
+  if(!amt||amt<50){ toast("Minimum withdrawal amount is ₹50","e"); return; }
+  if(amt>bal){ toast("Insufficient wallet balance","e"); return; }
+  setBtnText("wd-btn","Submitting…",true);
+  const rid=`req_${uid}_${Date.now()}`;
+  await db.ref(`withdrawals/${rid}`).set({user_id:uid,upi_id:upi,amount:amt,status:"pending",requested_at:Date.now()});
+  const nb=Math.max(0,parseFloat((bal-amt).toFixed(2)));
+  await db.ref(`users/${uid}`).update({wallet_balance:nb});
+  setBtnText("wd-btn","Submit Withdrawal Request",false);
+  document.getElementById("wd-upi").value="";
+  document.getElementById("wd-amt").value="";
+  toast("Withdrawal request submitted! ✅","s");
   await loadWithdraw();
 }
 
-/* ── Helpers ────────────────────────────────────────────────────────────── */
-function fmtRs(n) {
-  return "₹" + parseFloat(n||0).toFixed(2);
+/* ── Chart.js ─────────────────────────────────────────────────────────── */
+const chartInstances={};
+function renderChart(canvasId, earns, onWeekTotal){
+  const labels=[], data=[];
+  let weekTotal=0;
+  for(let i=6;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const s=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+    const e=s+86400000;
+    const day=earns.filter(x=>x.earned_at>=s&&x.earned_at<e).reduce((a,x)=>a+(x.amount||0),0);
+    labels.push(d.toLocaleDateString("en",{weekday:"short"}));
+    data.push(parseFloat(day.toFixed(2)));
+    weekTotal+=day;
+  }
+  onWeekTotal&&onWeekTotal(weekTotal.toFixed(2));
+  if(chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  const ctx=document.getElementById(canvasId)?.getContext("2d");
+  if(!ctx) return;
+  chartInstances[canvasId]=new Chart(ctx,{
+    type:"bar",
+    data:{labels,datasets:[{data,
+      backgroundColor:data.map(v=>v>0?"rgba(99,102,241,0.75)":"rgba(226,232,240,1)"),
+      borderRadius:6,borderSkipped:false}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`₹${c.raw.toFixed(2)}`}}},
+      scales:{
+        x:{grid:{display:false},border:{display:false},
+           ticks:{font:{size:10,family:"Inter"},color:"#94A3B8"}},
+        y:{display:false}
+      }
+    }
+  });
 }
-function fmtN(n) {
-  n = parseInt(n)||0;
-  if (n>=1e6) return (n/1e6).toFixed(1)+"M";
-  if (n>=1e3) return (n/1e3).toFixed(1)+"K";
-  return n.toString();
-}
-function fmtDate(ts) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  return d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"});
-}
-function esc(s) {
-  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
-function toast(msg, type="info") {
-  const el = document.getElementById("toast");
-  el.textContent  = msg;
-  el.className    = `toast ${type} show`;
-  clearTimeout(el._t);
-  el._t = setTimeout(()=>el.classList.remove("show"), 3200);
-}
-function setBtn(id, txt, disabled) {
-  const b = document.getElementById(id);
-  if (!b) return;
-  b.textContent = txt;
-  b.disabled    = disabled;
-}
+
+/* ── Helpers ─────────────────────────────────────────────────────────── */
+function fmtRs(n){ return "₹"+parseFloat(n||0).toFixed(2); }
+function fmtN(n){ n=parseInt(n)||0; if(n>=1e6)return(n/1e6).toFixed(1)+"M"; if(n>=1e3)return(n/1e3).toFixed(1)+"K"; return n.toString(); }
+function fmtDate(ts){ if(!ts)return"—"; return new Date(ts).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"}); }
+function fmtDateTime(ts){ if(!ts)return"—"; const d=new Date(ts*1000); return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"}); }
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function toast(msg,type="i"){ const el=document.getElementById("toast"); el.textContent=msg; el.className="toast "+type+" show"; clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove("show"),3200); }
+function setBtnText(id,txt,dis){ const b=document.getElementById(id); if(b){b.textContent=txt;b.disabled=dis;} }
+function icons(){ try{ lucide.createIcons(); } catch{} }
 </script>
 </body>
 </html>
