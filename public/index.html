@@ -372,7 +372,7 @@ input{font-family:'Inter',sans-serif}
    <div class="bal-live"><div class="ldot"></div>Live</div>
    <div class="bal-lbl">Available Balance</div>
    <div class="bal-amt balance-display" id="h-bal">₹0.00</div>
-   <div class="bal-sub">Earn ₹5 per 100 views · Credited in real time</div>
+   <div class="bal-sub">Earn ₹0.05 per view · Credited in real time</div>
    <div class="bal-proj"><i data-lucide="trending-up"></i><span id="h-proj">Calculating projection…</span></div>
   </div>
 
@@ -761,7 +761,7 @@ async function loadHomeStats(){
 
   // Monthly projection (avg views × ₹5/100 × est 10 posts/month)
   const avgViews = Object.values(chs).reduce((s,c)=>s+(c.avg_views||0),0);
-  const proj = parseFloat(((avgViews/100)*5*10).toFixed(2));
+  const proj = parseFloat((avgViews*0.05*10).toFixed(2));
   document.getElementById("h-proj").textContent =
     proj>0 ? `Est. ₹${proj}/month based on your channels` : "Add a channel to see your projection";
 
@@ -806,7 +806,7 @@ async function loadChannels(){
   }
   el.innerHTML=chs.map(([key,ch])=>{
     const health  = Math.min(Math.round((ch.avg_views/(ch.subscribers||1))*100),100);
-    const est     = ((ch.avg_views||0)/100*5).toFixed(2);
+    const est     = ((ch.avg_views||0)*0.05).toFixed(2);
     const typeIco = health>=20?"trending-up":health>=10?"minus":"trending-down";
     return `<div class="ch-card">
       <div class="ch-inner">
@@ -958,9 +958,9 @@ async function loadPosts(){
 
     el.innerHTML=myPosts.map(p=>{
       const views   = p.chInfo?.views||0;
-      const prog    = (views%100)/100*100;
-      const earned  = Math.floor(views/100)*5;
-      const nextAt  = (Math.floor(views/100)+1)*100;
+      const prog    = Math.min((views/100)*100, 100);
+      const earned  = parseFloat((views*0.05).toFixed(2));
+      const nextAt  = views+1;
       const typeIco = p.post_type==="photo"?"image" : p.post_type==="video"?"video" : "file-text";
       const cap     = p.caption ? esc(p.caption) : "<em style='color:var(--t3)'>No caption</em>";
       return `<div class="post-card">
@@ -977,7 +977,7 @@ async function loadPosts(){
         <div class="vp">
           <div class="vp-hd">
             <span class="vp-cur">${views} views so far</span>
-            <span class="vp-nxt">Next ₹5 at ${nextAt} views</span>
+            <span class="vp-nxt">₹0.05 per view · live</span>
           </div>
           <div class="vp-bg"><div class="vp-fill" style="width:${prog}%"></div></div>
           <div class="vp-earn">
