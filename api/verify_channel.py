@@ -37,7 +37,7 @@ class handler(BaseHTTPRequestHandler):
             self._json({"ok":True,"chat_id":chat["id"],"title":chat.get("title",channel),
                         "username":chat.get("username",channel.lstrip("@")),
                         "subscribers":subs,"avg_views":avg_view,
-                        "est_earnings":round((avg_view/100)*5,2)})
+                        "est_earnings":round(avg_view*0.05,2)})
         except Exception as e:
             self._json({"ok":False,"error":str(e)})
 

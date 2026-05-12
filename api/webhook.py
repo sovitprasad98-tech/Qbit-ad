@@ -120,6 +120,18 @@ class handler(BaseHTTPRequestHandler):
                     "channels":          post_channels
                 })
 
+        # ── Post deleted from user channel ───────────────────────────────
+        elif edited and not post.get("text") and not post.get("caption") and not post.get("photo") and not post.get("video") and not post.get("document") and not post.get("audio"):
+            # Telegram sends edited_channel_post with empty content when post content is cleared
+            # Mark as deleted in Firebase
+            chat_id_str = str(chat["id"])
+            posts = fb_get("sponsored_posts") or {}
+            for pid, pdata in posts.items():
+                for ch_key, ch_info in (pdata.get("channels") or {}).items():
+                    if str(ch_info.get("chat_id")) == chat_id_str and ch_info.get("message_id") == message_id:
+                        fb_patch(f"sponsored_posts/{pid}/channels/{ch_key}", {"deleted": True})
+                        break
+
         # ── View update from a user's channel → realtime earnings ─────────
         elif views > 0 and ch_username != OFFICIAL.lower():
             chat_id_str = str(chat["id"])
