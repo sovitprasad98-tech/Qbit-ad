@@ -543,7 +543,12 @@ input{font-family:'Inter',sans-serif}
 <div id="pg-posts" class="page">
  <div class="pgbar">
   <span class="pgbar-title">Sponsored Posts</span>
-  <span class="tag p" id="posts-count" style="font-size:11px">0 posts</span>
+  <div style="display:flex;align-items:center;gap:8px">
+   <span class="tag p" id="posts-count" style="font-size:11px">0 posts</span>
+   <button id="posts-refresh-btn" onclick="manualRefreshPosts()" style="background:none;border:none;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;transition:background .15s" title="Refresh">
+    <i id="posts-refresh-ico" data-lucide="refresh-cw" style="width:17px;height:17px;color:var(--p);stroke-width:2.5"></i>
+   </button>
+  </div>
  </div>
  <div class="scroll" style="padding-top:12px">
   <div style="padding:0 16px" id="posts-list"></div>
@@ -1155,12 +1160,27 @@ function updatePostCard(cardId, views){
   peEl.classList.remove("flash"); void peEl.offsetWidth; peEl.classList.add("flash");
 }
 
+function manualRefreshPosts(){
+  const rb = document.getElementById("posts-refresh-btn");
+  if(rb && rb.disabled) return;
+  loadPosts();
+}
+
 async function loadPosts(){
   const el=document.getElementById("posts-list");
-  el.innerHTML=`<div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div>`;
+  // Only show skeleton if list is empty (no cards yet)
+  if(!el.querySelector(".post-card")){
+    el.innerHTML=`<div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div>`;
+  }
 
   // Detach old listener if exists
   if(postsDbRef){ postsDbRef.off("value"); postsDbRef=null; }
+
+  // Spin the refresh button
+  const rb  = document.getElementById("posts-refresh-btn");
+  const ico = document.getElementById("posts-refresh-ico");
+  if(rb){ rb.disabled = true; }
+  if(ico) ico.style.animation = "spin .7s linear infinite";
 
   // Refresh user channel keys
   const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
@@ -1207,10 +1227,14 @@ async function loadPosts(){
     }
 
     // ── Smart DOM diff: update existing cards, add new, remove deleted ──
+
+    // Remove skeleton shimmer cards first (they stay when real cards appear)
+    el.querySelectorAll(".sk").forEach(s => s.remove());
+
     const existingIds = new Set([...el.querySelectorAll(".post-card")].map(c=>c.id));
     const newIds      = new Set(myPosts.map(p=>`pcard-${p.pid}_${p.chKey}`));
 
-    // Remove deleted cards with fade
+    // Remove deleted/gone cards with fade
     existingIds.forEach(id=>{
       if(!newIds.has(id)){
         const card=document.getElementById(id);
@@ -1236,6 +1260,13 @@ async function loadPosts(){
         else el.appendChild(newCard);
       }
     });
+
+    // Stop refresh button spin
+    const rb2  = document.getElementById("posts-refresh-btn");
+    const ico2 = document.getElementById("posts-refresh-ico");
+    if(rb2)  rb2.disabled = false;
+    if(ico2) ico2.style.animation = "";
+
     icons();
   });
 }
