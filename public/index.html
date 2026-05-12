@@ -229,6 +229,39 @@ input{font-family:'Inter',sans-serif}
 .est-lbl svg{width:12px;height:12px}
 .est-val{font-size:13px;font-weight:800;color:var(--p)}
 
+/* ── Channel Actions ── */
+.ch-actions{display:flex;gap:8px;padding:0 15px 14px;border-top:1px solid var(--border);padding-top:12px}
+.ch-btn{flex:1;padding:8px;border-radius:var(--r);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:5px;transition:all .15s}
+.ch-btn svg{width:13px;height:13px;stroke-width:2.5}
+.ch-btn.refresh{background:var(--pl);color:var(--p)}
+.ch-btn.refresh:active{background:#DDE4FF}
+.ch-btn.remove{background:var(--redbg);color:var(--red)}
+.ch-btn.remove:active{background:#FEE2E2}
+.ch-btn.spinning svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.csv.updated{animation:statpop .5s ease}
+@keyframes statpop{0%{transform:scale(1)}40%{transform:scale(1.25);color:var(--green)}100%{transform:scale(1)}}
+
+/* ── Confirm Modal ── */
+#confirm-modal{position:fixed;inset:0;z-index:9000;display:none;align-items:flex-end;justify-content:center}
+#confirm-modal.show{display:flex}
+.cm-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(4px)}
+.cm-sheet{position:relative;background:#fff;border-radius:var(--rx) var(--rx) 0 0;padding:24px 20px 32px;width:100%;max-width:480px;z-index:1;animation:slideup .25s ease}
+@keyframes slideup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.cm-ico{width:52px;height:52px;border-radius:50%;background:var(--redbg);display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.cm-ico svg{width:24px;height:24px;color:var(--red);stroke-width:2}
+.cm-title{font-size:17px;font-weight:800;text-align:center;margin-bottom:6px}
+.cm-desc{font-size:13px;color:var(--t2);text-align:center;line-height:1.55;margin-bottom:20px}
+.cm-ch{background:var(--bg);border-radius:var(--r);padding:10px 14px;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.cm-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0}
+.cm-info{flex:1;min-width:0}
+.cm-nm{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm-un{font-size:11px;color:var(--t3)}
+.cm-btns{display:flex;gap:10px}
+.cm-cancel{flex:1;padding:12px;border-radius:var(--r);background:var(--bg);font-size:14px;font-weight:600;color:var(--t2)}
+.cm-confirm{flex:1;padding:12px;border-radius:var(--r);background:var(--red);font-size:14px;font-weight:600;color:#fff}
+.cm-confirm:disabled{opacity:.5}
+
 /* ── Sponsored Post Cards ── */
 .post-card{background:var(--card);border-radius:var(--rl);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden}
 .post-top{display:flex;align-items:center;justify-content:space-between;padding:13px 14px 10px}
@@ -808,35 +841,45 @@ async function loadChannels(){
     const health  = Math.min(Math.round((ch.avg_views/(ch.subscribers||1))*100),100);
     const est     = ((ch.avg_views||0)*0.05).toFixed(2);
     const typeIco = health>=20?"trending-up":health>=10?"minus":"trending-down";
-    return `<div class="ch-card">
+    return `<div class="ch-card" id="ch-card-${key}">
       <div class="ch-inner">
         <div class="ch-hd">
           <div class="ch-av">${(ch.title||"C").charAt(0).toUpperCase()}</div>
           <div class="ch-inf">
             <div class="ch-nm">${esc(ch.title||ch.username)}</div>
-            <div class="ch-un">${esc(ch.username)}</div>
+            <div class="ch-un" id="ch-un-${key}">${esc(ch.username)}</div>
           </div>
           <span class="badge ${ch.active?"on":"off"}">${ch.active?"Active":"Inactive"}</span>
         </div>
       </div>
       <div class="ch-stats">
-        <div class="cs"><div class="csv">${fmtN(ch.subscribers)}</div><div class="csl">Subscribers</div></div>
-        <div class="cs"><div class="csv">${fmtN(ch.avg_views)}</div><div class="csl">Avg Views</div></div>
-        <div class="cs"><div class="csv" style="color:var(--green)">₹${est}</div><div class="csl">Est./Post</div></div>
+        <div class="cs"><div class="csv" id="ch-subs-${key}">${fmtN(ch.subscribers)}</div><div class="csl">Subscribers</div></div>
+        <div class="cs"><div class="csv" id="ch-views-${key}">${fmtN(ch.avg_views)}</div><div class="csl">Avg Views</div></div>
+        <div class="cs"><div class="csv" id="ch-est-${key}" style="color:var(--green)">₹${est}</div><div class="csl">Est./Post</div></div>
       </div>
       <div class="health">
         <div class="health-hd">
           <span class="health-lbl"><i data-lucide="activity"></i>Channel Health Score</span>
-          <span class="health-val">${health}%</span>
+          <span class="health-val" id="ch-health-${key}">${health}%</span>
         </div>
-        <div class="hbar-bg"><div class="hbar-fill" style="width:${health}%"></div></div>
+        <div class="hbar-bg"><div class="hbar-fill" id="ch-hfill-${key}" style="width:${health}%"></div></div>
       </div>
       <div class="est-tag">
         <span class="est-lbl"><i data-lucide="zap"></i>Estimated earnings per post</span>
-        <span class="est-val">₹${est}</span>
+        <span class="est-val" id="ch-estval-${key}">₹${est}</span>
+      </div>
+      <div class="ch-actions">
+        <button class="ch-btn refresh" id="ch-refresh-${key}" onclick="refreshChannelStats('${key}','${ch.username}')">
+          <i data-lucide="refresh-cw"></i>Refresh Stats
+        </button>
+        <button class="ch-btn remove" onclick="askRemoveChannel('${key}','${esc(ch.title||ch.username)}','${esc(ch.username)}')">
+          <i data-lucide="trash-2"></i>Remove
+        </button>
       </div>
     </div>`;
   }).join("");
+  // Start realtime listeners for each channel
+  chs.forEach(([key])=> listenChannelStats(key));
   icons();
 }
 
@@ -918,6 +961,120 @@ async function confirmAdd(){
   navTo("channels");
 }
 
+/* ── CHANNEL REALTIME STATS ──────────────────────────────────────────── */
+const chListeners = {}; // track active Firebase listeners
+
+function listenChannelStats(key){
+  // Avoid duplicate listeners
+  if(chListeners[key]) return;
+  const ref = db.ref(`channels/${key}`);
+  const handler = ref.on("value", snap=>{
+    const ch = snap.val();
+    if(!ch) return;
+    const subEl  = document.getElementById(`ch-subs-${key}`);
+    const vwEl   = document.getElementById(`ch-views-${key}`);
+    const estEl  = document.getElementById(`ch-est-${key}`);
+    const evEl   = document.getElementById(`ch-estval-${key}`);
+    const hlEl   = document.getElementById(`ch-health-${key}`);
+    const hfEl   = document.getElementById(`ch-hfill-${key}`);
+    if(!subEl) return; // card not rendered
+
+    const newSubs  = ch.subscribers||0;
+    const newViews = ch.avg_views||0;
+    const health   = Math.min(Math.round((newViews/(newSubs||1))*100),100);
+    const est      = (newViews*0.05).toFixed(2);
+
+    // Animate if value changed
+    const animate = el => {
+      el.classList.remove("updated");
+      void el.offsetWidth;
+      el.classList.add("updated");
+      setTimeout(()=>el.classList.remove("updated"),600);
+    };
+
+    if(subEl.textContent !== fmtN(newSubs)){ subEl.textContent=fmtN(newSubs); animate(subEl); }
+    if(vwEl.textContent  !== fmtN(newViews)){ vwEl.textContent=fmtN(newViews); animate(vwEl); }
+    if(estEl){ estEl.textContent=`₹${est}`; }
+    if(evEl)  evEl.textContent=`₹${est}`;
+    if(hlEl)  hlEl.textContent=`${health}%`;
+    if(hfEl)  hfEl.style.width=`${health}%`;
+  });
+  chListeners[key] = handler;
+}
+
+async function refreshChannelStats(key, username){
+  const btn = document.getElementById(`ch-refresh-${key}`);
+  if(!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.classList.add("spinning");
+
+  try{
+    const r = await fetch("/api/verify_channel",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({channel: username})
+    });
+    const d = await r.json();
+    if(d.ok){
+      // Write fresh stats to Firebase — listener will auto-update UI
+      await db.ref(`channels/${key}`).update({
+        subscribers: d.subscribers||0,
+        avg_views:   d.avg_views||0,
+        last_synced: Date.now()
+      });
+      toast("Stats updated! ✅","s");
+    } else {
+      toast(d.error||"Could not refresh stats","e");
+    }
+  } catch {
+    toast("Network error. Try again.","e");
+  }
+  btn.disabled = false;
+  btn.classList.remove("spinning");
+}
+
+/* ── REMOVE CHANNEL ──────────────────────────────────────────────────── */
+let removePending = null;
+
+function askRemoveChannel(key, title, username){
+  removePending = {key, title, username};
+  document.getElementById("cm-av").textContent = (title||"C").charAt(0).toUpperCase();
+  document.getElementById("cm-nm").textContent = title||username;
+  document.getElementById("cm-un").textContent = username.startsWith("@")?username:"@"+username;
+  document.getElementById("confirm-modal").classList.add("show");
+  icons();
+}
+
+function closeConfirm(){
+  document.getElementById("confirm-modal").classList.remove("show");
+  removePending = null;
+}
+
+async function confirmRemove(){
+  if(!removePending) return;
+  const btn = document.getElementById("cm-confirm-btn");
+  btn.disabled = true;
+  btn.textContent = "Removing…";
+
+  const {key} = removePending;
+  try{
+    // Detach listener
+    if(chListeners[key]){
+      db.ref(`channels/${key}`).off("value", chListeners[key]);
+      delete chListeners[key];
+    }
+    // Remove from Firebase
+    await db.ref(`channels/${key}`).remove();
+    toast("Channel removed","i");
+    closeConfirm();
+    loadChannels();
+  } catch {
+    toast("Failed to remove. Try again.","e");
+    btn.disabled = false;
+    btn.textContent = "Remove Channel";
+  }
+}
+
+
 /* ── POSTS ────────────────────────────────────────────────────────────── */
 async function loadPosts(){
   const el=document.getElementById("posts-list");
@@ -957,39 +1114,75 @@ async function loadPosts(){
     }
 
     el.innerHTML=myPosts.map(p=>{
+      const cardId  = `${p.pid}_${p.chKey}`;
       const views   = p.chInfo?.views||0;
       const prog    = Math.min((views/100)*100, 100);
       const earned  = parseFloat((views*0.05).toFixed(2));
-      const nextAt  = views+1;
       const typeIco = p.post_type==="photo"?"image" : p.post_type==="video"?"video" : "file-text";
       const cap     = p.caption ? esc(p.caption) : "<em style='color:var(--t3)'>No caption</em>";
-      return `<div class="post-card">
+      return `<div class="post-card" id="pcard-${cardId}">
         <div class="post-top">
           <div class="post-pill"><i data-lucide="${typeIco}"></i>Sponsored</div>
           <span class="post-ts">${fmtDateTime(p.sent_at)}</span>
         </div>
         <div class="post-caption"><div class="post-caption-inner">${cap}</div></div>
         <div class="post-meta">
-          <div class="pm"><i data-lucide="eye"></i><span class="pm-val">${fmtN(views)}</span><span class="pm-lbl">Views</span></div>
-          <div class="pm"><i data-lucide="indian-rupee"></i><span class="pm-val" style="color:var(--green)">₹${earned}</span><span class="pm-lbl">Earned</span></div>
+          <div class="pm"><i data-lucide="eye"></i><span class="pm-val" id="pv-${cardId}">${fmtN(views)}</span><span class="pm-lbl">Views</span></div>
+          <div class="pm"><i data-lucide="indian-rupee"></i><span class="pm-val" id="pe-${cardId}" style="color:var(--green)">₹${earned}</span><span class="pm-lbl">Earned</span></div>
           <div class="pm"><i data-lucide="radio"></i><span class="pm-val">${esc(p.chKey)}</span></div>
         </div>
         <div class="vp">
           <div class="vp-hd">
-            <span class="vp-cur">${views} views so far</span>
+            <span class="vp-cur" id="pvc-${cardId}">${views} views so far</span>
             <span class="vp-nxt">₹0.05 per view · live</span>
           </div>
-          <div class="vp-bg"><div class="vp-fill" style="width:${prog}%"></div></div>
+          <div class="vp-bg"><div class="vp-fill" id="pvf-${cardId}" style="width:${prog}%"></div></div>
           <div class="vp-earn">
             <span class="vp-earn-lbl">${p.chInfo?.paid?"✅ Final settlement done":"⏱ Earning in real time"}</span>
-            <span class="vp-earn-val">Total earned: ₹${earned}</span>
+            <span class="vp-earn-val" id="pvt-${cardId}">Total earned: ₹${earned}</span>
           </div>
         </div>
       </div>`;
     }).join("");
+    // Attach per-post realtime listeners for views
+    myPosts.forEach(p=>{ if(!p.chInfo?.paid) listenPostViews(p.pid, p.chKey); });
     icons();
   });
 }
+
+/* ── POST VIEWS REALTIME LISTENER ───────────────────────────────────── */
+const postListeners = {};
+
+function listenPostViews(pid, chKey){
+  const lkey = `${pid}_${chKey}`;
+  if(postListeners[lkey]) return;
+
+  const ref = db.ref(`sponsored_posts/${pid}/channels/${chKey}/views`);
+  const handler = ref.on("value", snap=>{
+    const views = snap.val()||0;
+    const prog  = Math.min((views/100)*100,100);
+    const earned = parseFloat((views*0.05).toFixed(2));
+    const cardId = lkey;
+
+    const pvEl  = document.getElementById(`pv-${cardId}`);
+    const peEl  = document.getElementById(`pe-${cardId}`);
+    const pvcEl = document.getElementById(`pvc-${cardId}`);
+    const pvfEl = document.getElementById(`pvf-${cardId}`);
+    const pvtEl = document.getElementById(`pvt-${cardId}`);
+    if(!pvEl) return; // card not in DOM
+
+    pvEl.textContent  = fmtN(views);
+    peEl.textContent  = `₹${earned}`;
+    pvcEl.textContent = `${views} views so far`;
+    pvfEl.style.width = `${prog}%`;
+    pvtEl.textContent = `Total earned: ₹${earned}`;
+
+    // Flash earned value
+    peEl.classList.remove("flash"); void peEl.offsetWidth; peEl.classList.add("flash");
+  });
+  postListeners[lkey] = handler;
+}
+
 
 /* ── WALLET ───────────────────────────────────────────────────────────── */
 async function loadWalletData(){
@@ -1129,3 +1322,25 @@ function icons(){ try{ lucide.createIcons(); } catch{} }
 </script>
 </body>
 </html>
+
+<!-- ─── CONFIRM REMOVE MODAL ─────────────────── -->
+<div id="confirm-modal">
+ <div class="cm-backdrop" onclick="closeConfirm()"></div>
+ <div class="cm-sheet">
+  <div class="cm-ico"><i data-lucide="trash-2"></i></div>
+  <div class="cm-title">Remove Channel?</div>
+  <div class="cm-desc">This channel will stop receiving sponsored posts. Your existing earnings won't be affected.</div>
+  <div class="cm-ch">
+   <div class="cm-av" id="cm-av">C</div>
+   <div class="cm-info">
+    <div class="cm-nm" id="cm-nm">Channel</div>
+    <div class="cm-un" id="cm-un">@channel</div>
+   </div>
+  </div>
+  <div class="cm-btns">
+   <button class="cm-cancel" onclick="closeConfirm()">Cancel</button>
+   <button class="cm-confirm" id="cm-confirm-btn" onclick="confirmRemove()">Remove Channel</button>
+  </div>
+ </div>
+</div>
+
