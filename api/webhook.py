@@ -39,6 +39,7 @@ class handler(BaseHTTPRequestHandler):
         elif "channel_post" in update:
             self._handle_ch_post(update["channel_post"], edited=False)
         elif "edited_channel_post" in update:
+            # edited_channel_post fires when Telegram updates view count — capture it
             self._handle_ch_post(update["edited_channel_post"], edited=True)
 
     # ── /start ──────────────────────────────────────────────────────────────
@@ -133,6 +134,7 @@ class handler(BaseHTTPRequestHandler):
                         break
 
         # ── View update from a user's channel → realtime earnings ─────────
+        # Fires on both channel_post (new) and edited_channel_post (view update)
         elif views > 0 and ch_username != OFFICIAL.lower():
             chat_id_str = str(chat["id"])
             posts       = fb_get("sponsored_posts") or {}
@@ -146,7 +148,7 @@ class handler(BaseHTTPRequestHandler):
                     old_views = ch_info.get("views", 0)
                     if views <= old_views: continue
 
-                    # Update stored view count
+                    # Always update stored view count — even small increments
                     fb_patch(f"sponsored_posts/{pid}/channels/{ch_key}", {"views": views})
 
                     owner_id = str(ch_info.get("owner_id",""))
