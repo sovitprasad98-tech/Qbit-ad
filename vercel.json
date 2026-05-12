@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "crons": [
+    {
+      "path": "/api/check_views",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}
