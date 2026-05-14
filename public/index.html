@@ -1193,112 +1193,107 @@ function manualRefreshPosts(){
 }
 
 async function loadPosts(){
-  const el=document.getElementById("posts-list");
-  // Only show skeleton if list is empty (no cards yet)
-  if(!el.querySelector(".post-card")){
-    el.innerHTML=`<div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div>`;
-  }
+  const el = document.getElementById("posts-list");
 
-  // Detach old listener if exists
-  if(postsDbRef){ postsDbRef.off("value"); postsDbRef=null; }
+  // ── Step 1: Detach old listener immediately ──
+  if(postsDbRef){ postsDbRef.off("value"); postsDbRef = null; }
 
-  // Spin the refresh button
+  // ── Step 2: Show shimmer (always clear first) ──
+  el.innerHTML = `<div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div>`;
+
+  // ── Step 3: Spin refresh button ──
   const rb  = document.getElementById("posts-refresh-btn");
   const ico = document.getElementById("posts-refresh-ico");
-  if(rb){ rb.disabled=true; rb.style.opacity="0.6"; }
-  if(ico) ico.style.animation = "spin .7s linear infinite";
+  if(rb)  { rb.disabled = true;  rb.style.opacity = "0.6"; }
+  if(ico) { ico.style.animation = "spin .7s linear infinite"; }
 
-  // Refresh user channel keys
+  // ── Step 4: Fetch user's channels ──
   const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
   userChKeys = Object.keys(cs.val()||{});
 
   if(!userChKeys.length){
-    el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
+    el.innerHTML = `<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
       <div class="empty-title">No sponsored posts yet</div>
       <div class="empty-desc">Add a channel first. Sponsored posts will appear here as they are forwarded to your channels.</div></div>`;
-    document.getElementById("posts-count").textContent="0 posts";
+    document.getElementById("posts-count").textContent = "0 posts";
+    if(rb)  { rb.disabled = false; rb.style.opacity = "1"; }
+    if(ico) { ico.style.animation = ""; }
     icons(); return;
   }
 
-  // ── Single realtime listener on sponsored_posts ──
+  // ── Step 5: Attach realtime listener ──
   postsDbRef = db.ref("sponsored_posts");
 
-  // Poll Telegram for real view counts every 60 seconds
+  // Start 60s view polling
   if(window._viewsPollTimer) clearInterval(window._viewsPollTimer);
   window._viewsPollTimer = setInterval(()=> pollViewsNow(), 60000);
-  setTimeout(()=> pollViewsNow(), 2000); // also trigger immediately on load
+  setTimeout(()=> pollViewsNow(), 3000);
 
   postsDbRef.on("value", snap=>{
-    const all=snap.val()||{};
-    const myPosts=[];
+    const all = snap.val()||{};
+    const myPosts = [];
 
-    for(const [pid,pdata] of Object.entries(all)){
+    for(const [pid, pdata] of Object.entries(all)){
       const channels = pdata.channels||{};
       for(const chk of userChKeys){
-        if(channels[chk]){
-          // Check if post still exists in channel (not deleted)
-          // deleted field set by webhook when Telegram fires channel_post delete
-          if(channels[chk].deleted) continue;
+        if(channels[chk] && !channels[chk].deleted){
           myPosts.push({pid, chKey:chk, chInfo:channels[chk], ...pdata});
           break;
         }
       }
     }
-    myPosts.sort((a,b)=>b.sent_at-a.sent_at);
-    document.getElementById("posts-count").textContent=`${myPosts.length} post${myPosts.length!==1?"s":""}`;
+    myPosts.sort((a,b)=> b.sent_at - a.sent_at);
+    document.getElementById("posts-count").textContent =
+      `${myPosts.length} post${myPosts.length!==1?"s":""}`;
 
-    // Periodically verify posts aren't deleted from Telegram
     clearTimeout(deleteCheckTimer);
     deleteCheckTimer = setTimeout(()=> checkDeletedPosts(myPosts), 3000);
 
+    // ── Step 6: Clear shimmer ALWAYS before rendering ──
+    el.querySelectorAll(".sk").forEach(s => s.remove());
+
     if(!myPosts.length){
-      el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
+      el.innerHTML = `<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
         <div class="empty-title">No sponsored posts yet</div>
         <div class="empty-desc">Posts forwarded to your channels will appear here with real-time view tracking.</div></div>`;
+      if(rb)  { rb.disabled = false; rb.style.opacity = "1"; }
+      if(ico) { ico.style.animation = ""; }
       icons(); return;
     }
 
-    // ── Smart DOM diff: update existing cards, add new, remove deleted ──
+    // ── Step 7: Smart DOM diff — update/insert/remove cards ──
+    const existingIds = new Set([...el.querySelectorAll(".post-card")].map(c => c.id));
+    const newIds      = new Set(myPosts.map(p => `pcard-${p.pid}_${p.chKey}`));
 
-    // Remove skeleton shimmer cards first (they stay when real cards appear)
-    el.querySelectorAll(".sk").forEach(s => s.remove());
-
-    const existingIds = new Set([...el.querySelectorAll(".post-card")].map(c=>c.id));
-    const newIds      = new Set(myPosts.map(p=>`pcard-${p.pid}_${p.chKey}`));
-
-    // Remove deleted/gone cards with fade
     existingIds.forEach(id=>{
       if(!newIds.has(id)){
-        const card=document.getElementById(id);
-        if(card){ card.style.opacity="0"; card.style.transition="opacity .3s"; setTimeout(()=>card.remove(),300); }
+        const card = document.getElementById(id);
+        if(card){
+          card.style.transition = "opacity .3s";
+          card.style.opacity    = "0";
+          setTimeout(()=> card.remove(), 300);
+        }
       }
     });
 
-    // Update or insert cards
-    myPosts.forEach((p,i)=>{
+    myPosts.forEach((p, i)=>{
       const cardId = `${p.pid}_${p.chKey}`;
       const domId  = `pcard-${cardId}`;
       if(existingIds.has(domId)){
-        // Card exists — just update views inline, no re-render
         updatePostCard(cardId, p.chInfo?.views||0);
       } else {
-        // New card — insert at correct position
-        const html = renderPostCard(p);
-        const tmp  = document.createElement("div");
-        tmp.innerHTML = html;
+        const tmp = document.createElement("div");
+        tmp.innerHTML = renderPostCard(p);
         const newCard = tmp.firstElementChild;
         const cards   = el.querySelectorAll(".post-card");
         if(cards[i]) el.insertBefore(newCard, cards[i]);
-        else el.appendChild(newCard);
+        else         el.appendChild(newCard);
       }
     });
 
-    // Stop refresh button spin
-    const rb2  = document.getElementById("posts-refresh-btn");
-    const ico2 = document.getElementById("posts-refresh-ico");
-    if(rb2){ rb2.disabled=false; rb2.style.opacity="1"; }
-    if(ico2) ico2.style.animation = "";
-
+    // ── Step 8: Stop spin ──
+    if(rb)  { rb.disabled = false; rb.style.opacity = "1"; }
+    if(ico) { ico.style.animation = ""; }
     icons();
   });
 }
