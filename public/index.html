@@ -242,6 +242,17 @@ input{font-family:'Inter',sans-serif}
 .csv.updated{animation:statpop .5s ease}
 @keyframes statpop{0%{transform:scale(1)}40%{transform:scale(1.25);color:var(--green)}100%{transform:scale(1)}}
 
+/* ── Long Press Post Remove ── */
+#post-ctx-menu{position:fixed;inset:0;z-index:8500;display:none;align-items:flex-end;justify-content:center}
+#post-ctx-menu.show{display:flex}
+.pctx-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
+.pctx-sheet{position:relative;background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 28px;width:100%;max-width:480px;z-index:1;animation:slideup .2s ease}
+.pctx-handle{width:36px;height:4px;background:#E2E8F0;border-radius:4px;margin:0 auto 18px}
+.pctx-preview{background:var(--bg);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;font-size:13px;color:var(--t2);border-left:3px solid var(--p)}
+.pctx-btn{width:100%;padding:14px;border-radius:var(--r);display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600;background:var(--redbg);color:var(--red)}
+.pctx-btn svg{width:18px;height:18px;stroke-width:2.5;flex-shrink:0}
+.pctx-cancel{width:100%;padding:13px;border-radius:var(--r);font-size:15px;font-weight:600;color:var(--t2);background:var(--bg);margin-top:8px}
+
 /* ── Confirm Modal ── */
 #confirm-modal{position:fixed;inset:0;z-index:9000;display:none;align-items:flex-end;justify-content:center}
 #confirm-modal.show{display:flex}
@@ -784,9 +795,9 @@ async function loadHome(){
 
 async function loadHomeStats(){
   // Channel count + user channel keys
-  const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
+  const cs = await db.ref("channels").get();
   const chs = cs.val()||{};
-  userChKeys = Object.keys(chs);
+  userChKeys = Object.keys(chs).filter(k=> String(chs[k].owner_id)===String(uid));
   document.getElementById("qs-ch").textContent = userChKeys.length;
 
   // Earnings
@@ -843,8 +854,9 @@ async function loadHomeStats(){
 async function loadChannels(){
   const el=document.getElementById("ch-list");
   el.innerHTML=`<div class="sk sk-card"></div><div class="sk sk-card"></div>`;
-  const s = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
-  const chs = Object.entries(s.val()||{});
+  const s = await db.ref("channels").get();
+  const allS = s.val()||{};
+  const chs = Object.entries(allS).filter(([k,v])=> String(v.owner_id)===String(uid));
   if(!chs.length){
     el.innerHTML=`<div class="empty"><div class="empty-ico"><i data-lucide="radio"></i></div>
       <div class="empty-title">No channels added</div>
@@ -976,6 +988,60 @@ async function confirmAdd(){
   navTo("channels");
 }
 
+/* ── POST LONG PRESS ────────────────────────────────────────────────── */
+let pctxTarget = null;
+let lpTimer    = null;
+
+function attachLongPress(cardEl, pid, chKey, caption){
+  const start = ()=>{
+    lpTimer = setTimeout(()=>{
+      pctxTarget = {pid, chKey};
+      document.getElementById("pctx-caption").textContent =
+        caption && caption.length > 60 ? caption.slice(0,60)+"…" : (caption||"(no caption)");
+      document.getElementById("post-ctx-menu").classList.add("show");
+    }, 500);
+  };
+  const cancel = ()=> clearTimeout(lpTimer);
+  cardEl.addEventListener("touchstart",  start,  {passive:true});
+  cardEl.addEventListener("touchend",    cancel);
+  cardEl.addEventListener("touchmove",   cancel);
+  cardEl.addEventListener("mousedown",   start);
+  cardEl.addEventListener("mouseup",     cancel);
+  cardEl.addEventListener("mouseleave",  cancel);
+  // Prevent context menu on long press
+  cardEl.addEventListener("contextmenu", e=> e.preventDefault());
+}
+
+function closePostCtx(){
+  document.getElementById("post-ctx-menu").classList.remove("show");
+  pctxTarget = null;
+}
+
+async function hidePostFromList(){
+  if(!pctxTarget) return;
+  const {pid, chKey} = pctxTarget;
+  // Mark as hidden for this user only — store in Firebase users/{uid}/hidden_posts
+  try{
+    await db.ref(`users/${uid}/hidden_posts/${pid}_${chKey}`).set(true);
+    // Remove card from DOM immediately
+    const card = document.getElementById(`pcard-${pid}_${chKey}`);
+    if(card){
+      card.style.transition = "all .3s";
+      card.style.opacity    = "0";
+      card.style.transform  = "translateX(60px)";
+      setTimeout(()=> card.remove(), 300);
+    }
+    // Update count
+    const remaining = document.querySelectorAll(".post-card").length - 1;
+    document.getElementById("posts-count").textContent =
+      `${remaining} post${remaining!==1?"s":""}`;
+    toast("Post hidden from your list","i");
+  } catch(e){
+    toast("Failed to hide post","e");
+  }
+  closePostCtx();
+}
+
 /* ── CHANNEL REALTIME STATS ──────────────────────────────────────────── */
 const chListeners = {}; // track active Firebase listeners
 
@@ -1096,8 +1162,9 @@ async function confirmRemove(){
 async function pollViewsNow(){
   // Get current user channel keys from Firebase
   try{
-    const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
-    const keys = Object.keys(cs.val()||{});
+    const cs = await db.ref("channels").get();
+    const allPollCh = cs.val()||{};
+    const keys = Object.keys(allPollCh).filter(k=> String(allPollCh[k].owner_id)===String(uid));
     if(!keys.length) return;
     await fetch("/api/poll_views_user", {
       method:"POST",
@@ -1207,9 +1274,10 @@ async function loadPosts(){
   if(rb)  { rb.disabled = true;  rb.style.opacity = "0.6"; }
   if(ico) { ico.style.animation = "spin .7s linear infinite"; }
 
-  // ── Step 4: Fetch user's channels ──
-  const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
-  userChKeys = Object.keys(cs.val()||{});
+  // ── Step 4: Fetch user's channels (client-side filter — no index needed) ──
+  const cs = await db.ref("channels").get();
+  const allCh = cs.val()||{};
+  userChKeys = Object.keys(allCh).filter(k=> String(allCh[k].owner_id) === String(uid));
 
   if(!userChKeys.length){
     el.innerHTML = `<div class="empty"><div class="empty-ico"><i data-lucide="layout"></i></div>
@@ -1233,10 +1301,15 @@ async function loadPosts(){
     const all = snap.val()||{};
     const myPosts = [];
 
+    // Get hidden posts for this user
+    const hidSnap = await db.ref(`users/${uid}/hidden_posts`).get();
+    const hidden  = hidSnap.val()||{};
+
     for(const [pid, pdata] of Object.entries(all)){
       const channels = pdata.channels||{};
       for(const chk of userChKeys){
         if(channels[chk] && !channels[chk].deleted){
+          if(hidden[`${pid}_${chk}`]) break; // user hid this post
           myPosts.push({pid, chKey:chk, chInfo:channels[chk], ...pdata});
           break;
         }
@@ -1288,6 +1361,9 @@ async function loadPosts(){
         const cards   = el.querySelectorAll(".post-card");
         if(cards[i]) el.insertBefore(newCard, cards[i]);
         else         el.appendChild(newCard);
+        // Attach long press on new card
+        const rawCap = p.caption||"";
+        attachLongPress(newCard, p.pid, p.chKey, rawCap);
       }
     });
 
@@ -1312,7 +1388,7 @@ async function loadWalletData(){
   document.getElementById("w-month-lbl").textContent=`₹${monthEarn.toFixed(2)} Month`;
 
   // Pending withdrawals
-  const ws = await db.ref("withdrawals").orderByChild("user_id").equalTo(uid).get();
+  let ws; try{ ws = await db.ref("withdrawals").orderByChild("user_id").equalTo(uid).get(); } catch{ ws = await db.ref("withdrawals").get(); }
   const pend = Object.values(ws.val()||{}).filter(w=>w.status==="pending").reduce((s,w)=>s+w.amount,0);
   document.getElementById("w-pending-lbl").textContent=`Pending ₹${pend.toFixed(2)}`;
 
@@ -1345,7 +1421,7 @@ async function loadWalletData(){
 /* ── WITHDRAW ─────────────────────────────────────────────────────────── */
 async function loadWithdraw(){
   updateAllBalances();
-  const ws  = await db.ref("withdrawals").orderByChild("user_id").equalTo(uid).get();
+  let ws; try{ ws = await db.ref("withdrawals").orderByChild("user_id").equalTo(uid).get(); } catch{ ws = await db.ref("withdrawals").get(); }
   const wds = Object.values(ws.val()||{}).sort((a,b)=>b.requested_at-a.requested_at);
   const el  = document.getElementById("wd-history");
   if(!wds.length){
@@ -1439,6 +1515,20 @@ function icons(){ try{ lucide.createIcons(); } catch{} }
 </html>
 
 <!-- ─── CONFIRM REMOVE MODAL ─────────────────── -->
+<!-- ─── POST LONG PRESS MENU ─────────────────────────────────────────── -->
+<div id="post-ctx-menu">
+ <div class="pctx-backdrop" onclick="closePostCtx()"></div>
+ <div class="pctx-sheet">
+  <div class="pctx-handle"></div>
+  <div class="pctx-preview" id="pctx-caption">Post</div>
+  <button class="pctx-btn" onclick="hidePostFromList()">
+   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+   Hide from my list
+  </button>
+  <button class="pctx-cancel" onclick="closePostCtx()">Cancel</button>
+ </div>
+</div>
+
 <div id="confirm-modal">
  <div class="cm-backdrop" onclick="closeConfirm()"></div>
  <div class="cm-sheet">
