@@ -545,8 +545,13 @@ input{font-family:'Inter',sans-serif}
   <span class="pgbar-title">Sponsored Posts</span>
   <div style="display:flex;align-items:center;gap:8px">
    <span class="tag p" id="posts-count" style="font-size:11px">0 posts</span>
-   <button id="posts-refresh-btn" onclick="manualRefreshPosts()" style="background:none;border:none;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;transition:background .15s" title="Refresh">
-    <i id="posts-refresh-ico" data-lucide="refresh-cw" style="width:17px;height:17px;color:var(--p);stroke-width:2.5"></i>
+   <button id="posts-refresh-btn" onclick="manualRefreshPosts()" style="background:var(--pl);border:none;padding:7px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;transition:all .15s;width:34px;height:34px" title="Refresh">
+    <svg id="posts-refresh-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="var(--p)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;flex-shrink:0">
+     <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+     <path d="M21 3v5h-5"/>
+     <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+     <path d="M8 16H3v5"/>
+    </svg>
    </button>
   </div>
  </div>
@@ -737,6 +742,11 @@ function updateAllBalances(animate=false){
 
 /* ── Navigation ───────────────────────────────────────────────────────── */
 function goNav(pg){
+  // Stop view polling when leaving posts page
+  if(pg !== "posts" && window._viewsPollTimer){
+    clearInterval(window._viewsPollTimer);
+    window._viewsPollTimer = null;
+  }
   curPage=pg;
   const pages=["home","channels","posts","wallet","withdraw"];
   pages.forEach(p=>{
@@ -1082,6 +1092,22 @@ async function confirmRemove(){
 
 /* ── POSTS ────────────────────────────────────────────────────────────── */
 
+/* ── POLL VIEWS FROM TELEGRAM ───────────────────────────────────────── */
+async function pollViewsNow(){
+  // Get current user channel keys from Firebase
+  try{
+    const cs = await db.ref("channels").orderByChild("owner_id").equalTo(uid).get();
+    const keys = Object.keys(cs.val()||{});
+    if(!keys.length) return;
+    await fetch("/api/poll_views_user", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({owner_id: uid, ch_keys: keys})
+    });
+    // Firebase listener will auto-update UI when views change
+  } catch(e){ console.warn("pollViewsNow failed", e); }
+}
+
 /* ── CHECK DELETED POSTS ─────────────────────────────────────────────── */
 let deleteCheckTimer = null;
 
@@ -1179,7 +1205,7 @@ async function loadPosts(){
   // Spin the refresh button
   const rb  = document.getElementById("posts-refresh-btn");
   const ico = document.getElementById("posts-refresh-ico");
-  if(rb){ rb.disabled = true; }
+  if(rb){ rb.disabled=true; rb.style.opacity="0.6"; }
   if(ico) ico.style.animation = "spin .7s linear infinite";
 
   // Refresh user channel keys
@@ -1196,6 +1222,12 @@ async function loadPosts(){
 
   // ── Single realtime listener on sponsored_posts ──
   postsDbRef = db.ref("sponsored_posts");
+
+  // Poll Telegram for real view counts every 60 seconds
+  if(window._viewsPollTimer) clearInterval(window._viewsPollTimer);
+  window._viewsPollTimer = setInterval(()=> pollViewsNow(), 60000);
+  setTimeout(()=> pollViewsNow(), 2000); // also trigger immediately on load
+
   postsDbRef.on("value", snap=>{
     const all=snap.val()||{};
     const myPosts=[];
@@ -1264,7 +1296,7 @@ async function loadPosts(){
     // Stop refresh button spin
     const rb2  = document.getElementById("posts-refresh-btn");
     const ico2 = document.getElementById("posts-refresh-ico");
-    if(rb2)  rb2.disabled = false;
+    if(rb2){ rb2.disabled=false; rb2.style.opacity="1"; }
     if(ico2) ico2.style.animation = "";
 
     icons();
