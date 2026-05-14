@@ -1,13 +1,6 @@
 {
   "version": 2,
   "crons": [
-    {
-      "path": "/api/poll_views",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/check_views",
-      "schedule": "0 0 * * *"
-    }
+    { "path": "/api/check_views", "schedule": "0 0 * * *" }
   ]
 }
