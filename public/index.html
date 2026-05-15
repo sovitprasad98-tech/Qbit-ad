@@ -1023,6 +1023,7 @@ async function hidePostFromList(){
   // Mark as hidden for this user only — store in Firebase users/{uid}/hidden_posts
   try{
     await db.ref(`users/${uid}/hidden_posts/${pid}_${chKey}`).set(true);
+    hidden[`${pid}_${chKey}`] = true; // update local cache
     // Remove card from DOM immediately
     const card = document.getElementById(`pcard-${pid}_${chKey}`);
     if(card){
@@ -1297,13 +1298,13 @@ async function loadPosts(){
   window._viewsPollTimer = setInterval(()=> pollViewsNow(), 60000);
   setTimeout(()=> pollViewsNow(), 3000);
 
+  // Pre-fetch hidden posts (cached, refreshed on each loadPosts call)
+  const hidSnap = await db.ref(`users/${uid}/hidden_posts`).get();
+  let hidden = hidSnap.val()||{};
+
   postsDbRef.on("value", snap=>{
     const all = snap.val()||{};
     const myPosts = [];
-
-    // Get hidden posts for this user
-    const hidSnap = await db.ref(`users/${uid}/hidden_posts`).get();
-    const hidden  = hidSnap.val()||{};
 
     for(const [pid, pdata] of Object.entries(all)){
       const channels = pdata.channels||{};
